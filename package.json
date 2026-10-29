@@ -1,0 +1,45 @@
+{
+  "name": "mcp-tthc-netlify",
+  "version": "1.1.0",
+  "description": "MCP Server tra cứu Thủ tục Hành chính (TTHC) Việt Nam triển khai trên Netlify",
+  "main": "netlify/functions/mcp.ts",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/generate-assets.js && tsc && node scripts/build-plugin.js && node -e \"import('node:fs').then(fs=>fs.cpSync('public', 'dist/public', {recursive:true}))\"",
+    "build:assets": "node scripts/generate-assets.js",
+    "build:plugin": "node scripts/build-plugin.js",
+    "build:clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist', {recursive:true, force:true}))\" && npm run build",
+    "build:netlify": "node scripts/package-netlify.js",
+    "package:netlify": "node scripts/package-netlify.js",
+    "build:zip": "node scripts/package-zip.js",
+    "package:zip": "node scripts/package-zip.js",
+    "zip": "node scripts/package-zip.js",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch src/dev-server.ts",
+    "start": "node dist/src/dev-server.js",
+    "test": "tsx src/test-suite.ts"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "tthc",
+    "thu-tuc-hanh-chinh",
+    "vietnam",
+    "netlify",
+    "serverless"
+  ],
+  "author": "KynChou",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "@netlify/functions": "^3.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "dotenv": "^16.4.7",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

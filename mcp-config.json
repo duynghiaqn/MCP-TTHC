@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "version": "1.1.0",
+  "name": "mcp-tthc-netlify",
+  "title": "MCP Server Tra Cứu TTHC DVCQG",
+  "author": "Dev by KynChou",
+  "auth": {
+    "type": "shared_api_key",
+    "headers": [
+      "Authorization: Bearer <KEY>",
+      "X-API-Key: <KEY>"
+    ],
+    "query": "?api-key=<KEY> (hoặc ?key=<KEY>)"
+  },
+  "endpoints": {
+    "sse": {
+      "local": "http://localhost:3000/sse?api-key=YOUR_API_KEY",
+      "production": "https://mcp-tthc.netlify.app/sse?api-key=YOUR_API_KEY"
+    },
+    "http": {
+      "local": "http://localhost:3000/mcp?api-key=YOUR_API_KEY",
+      "production": "https://mcp-tthc.netlify.app/mcp?api-key=YOUR_API_KEY"
+    },
+    "openai_agent_plugin": "https://mcp-tthc.netlify.app/plugin.json",
+    "openai_mcp_config": "https://mcp-tthc.netlify.app/mcp.json",
+    "openai_classic_plugin": "https://mcp-tthc.netlify.app/.well-known/ai-plugin.json",
+    "openapi_schema": "https://mcp-tthc.netlify.app/openapi.json"
+  },
+  "tools": [
+    "search",
+    "fetch",
+    "tra_cuu_theo_ma_tthc",
+    "tim_kiem_theo_ten_tthc",
+    "loc_theo_cap_thuc_hien",
+    "loc_theo_linh_vuc",
+    "tim_kiem_tong_hop",
+    "goi_y_thu_tuc_lien_quan",
+    "tra_cuu_tthc_gia_lai",
+    "tthc_gia_lai",
+    "thong_tin_mcp_server"
+  ]
+}

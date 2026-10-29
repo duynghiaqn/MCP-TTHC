@@ -1,0 +1,43 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mcp-tthc-dvcqg",
+  "version": "1.1.0",
+  "description": "Tra cứu cơ sở dữ liệu quốc gia về Thủ tục Hành chính (TTHC) Việt Nam qua MCP Protocol.",
+  "author": {
+    "name": "KynChou",
+    "email": "info@dnncloud.net",
+    "url": "https://mcp-tthc.netlify.app"
+  },
+  "homepage": "https://mcp-tthc.netlify.app",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "tthc",
+    "vietnam",
+    "dvcqg",
+    "dich-vu-cong",
+    "public-services"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Tra cứu TTHC Quốc Gia",
+        "shortDescription": "Tra cứu thủ tục hành chính & dịch vụ công quốc gia Việt Nam",
+        "longDescription": "Truy xuất thông tin chi tiết hồ sơ, trình tự, lệ phí, thời hạn, căn cứ pháp lý và gợi ý chuỗi thủ tục liên quan từ cơ sở dữ liệu dịch vụ công quốc gia.",
+        "developerName": "KynChou",
+        "category": "Productivity",
+        "capabilities": [
+          "Read"
+        ],
+        "websiteURL": "https://mcp-tthc.netlify.app",
+        "brandColor": "#DA251D",
+        "logo": "./logo.svg",
+        "defaultPrompt": [
+          "Tra cứu thủ tục đăng ký kết hôn cần những giấy tờ gì và làm ở đâu?",
+          "Tìm các thủ tục hành chính cấp xã về lĩnh vực Hộ tịch.",
+          "Lấy danh sách thủ tục liên quan đến mở hộ kinh doanh."
+        ]
+      }
+    }
+  }
+}

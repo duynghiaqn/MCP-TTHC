@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tthc_dvcqg": {
+      "type": "http",
+      "url": "https://mcp-tthc.netlify.app/mcp",
+      "bearer_token_env_var": "MCP_TTHC_API_KEY"
+    }
+  }
+}

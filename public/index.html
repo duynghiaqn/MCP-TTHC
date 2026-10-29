@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Server Tra Cứu TTHC DVCQG | Netlify</title>
+  <meta name="description" content="Model Context Protocol (MCP) Server tra cứu Thủ tục Hành chính Việt Nam, hỗ trợ tìm kiếm theo mã, tên, cấp thực hiện và lĩnh vực.">
+  <link rel="icon" type="image/png" href="https://ik.imagekit.io/97moqce0c/Static/logo_uoCW9PIyz.png">
+  <link rel="apple-touch-icon" href="https://ik.imagekit.io/97moqce0c/Static/logo_uoCW9PIyz.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Schema.org Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://mcp-tthc.netlify.app/#website",
+        "url": "https://mcp-tthc.netlify.app/",
+        "name": "MCP Server Tra Cứu TTHC DVCQG",
+        "description": "Model Context Protocol Server tra cứu dữ liệu Thủ tục Hành chính Quốc gia Việt Nam",
+        "inLanguage": "vi-VN"
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://mcp-tthc.netlify.app/#webapp",
+        "name": "MCP TTHC Server & Playground",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "url": "https://mcp-tthc.netlify.app/",
+        "version": "1.1.0",
+        "softwareVersion": "1.1.0",
+        "description": "Máy chủ MCP Serverless cung cấp API và công cụ tra cứu hơn 6,700 thủ tục hành chính Việt Nam cho AI (Claude, Cursor, Windsurf, Continue).",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "VND"
+        }
+      },
+      {
+        "@type": "Dataset",
+        "@id": "https://mcp-tthc.netlify.app/#dataset",
+        "name": "Cơ sở dữ liệu Thủ tục Hành chính Việt Nam",
+        "description": "Dữ liệu hơn 6,700 thủ tục hành chính cấp Bộ, cấp Tỉnh, cấp Xã tại Việt Nam"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-container">
+      <div class="logo-area">
+        <div class="logo-badge">
+          <img src="https://ik.imagekit.io/97moqce0c/Static/logo_uoCW9PIyz.png" alt="MCP TTHC Logo" class="logo-icon-img">
+        </div>
+        <div>
+          <div class="site-title-row">
+            <h1 class="site-title">MCP TTHC DVCQG</h1>
+            <span class="version-tag-badge" id="app-version-badge">v1.1.0</span>
+            <span class="author-badge"><i class="bi bi-code-slash"></i> Dev by KynChou</span>
+          </div>
+          <p class="site-subtitle">Model Context Protocol Server • Tra cứu & Trích xuất Dữ liệu Thủ tục Hành chính Quốc gia</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div class="status-indicator" title="Số lượng kết nối đang hoạt động">
+          <span class="pulse-dot"></span>
+          <span id="system-status-text">Đang kết nối...</span>
+        </div>
+        <div class="record-count-badge" id="header-records-badge" title="Dữ liệu truy vấn trực tiếp từ cơ sở dữ liệu quốc gia">
+          <i class="bi bi-collection-fill"></i>
+          <span id="header-total-count">...</span> thủ tục
+        </div>
+        <div class="record-count-badge header-updated-badge" id="header-updated-badge" title="Thời gian cập nhật dữ liệu từ CSDL DVCQG (dựa vào version URL)">
+          <i class="bi bi-clock-history"></i>
+          <span>Cập nhật: <strong id="header-updated-val">...</strong></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container main-content">
+    
+    <!-- Top Bar: API Key & Server URL Configuration -->
+    <section class="config-bar glass-card">
+      <div class="config-grid">
+        <div class="config-item">
+          <label for="server-url-input">
+            <i class="bi bi-globe2 label-icon"></i> MCP Server URL:
+          </label>
+          <div class="input-with-action">
+            <input type="text" id="server-url-input" readonly value="">
+            <button class="btn btn-secondary btn-sm" id="btn-copy-url" title="Sao chép URL">
+              <i class="bi bi-clipboard"></i> Sao chép
+            </button>
+          </div>
+        </div>
+
+        <div class="config-item">
+          <label for="api-key-input">
+            <i class="bi bi-key-fill label-icon"></i> Khóa API Key (Truyền qua URL):
+          </label>
+          <div class="input-with-action">
+            <input type="password" id="api-key-input" placeholder="Nhập API_KEY từ env của bạn..." value="">
+            <button class="btn btn-icon btn-sm" id="btn-toggle-key-visibility" title="Ẩn/Hiện khóa">
+              <i class="bi bi-eye"></i>
+            </button>
+            <button class="btn btn-primary btn-sm" id="btn-save-key">
+              <i class="bi bi-floppy"></i> Lưu khóa
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-notice" id="auth-notice-bar">
+        <i class="bi bi-info-circle-fill notice-icon"></i>
+        <span id="auth-notice-text">Khóa API được tự động truyền qua URL parameter (<code>?key=...</code> hoặc <code>?apiKey=...</code>) theo cấu hình Netlify env <code>API_KEY</code>.</span>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs-wrapper">
+      <div class="nav-tabs">
+        <button class="tab-btn active" data-tab="playground" id="tab-btn-playground">
+          <i class="bi bi-terminal-dash tab-icon"></i> MCP Tools Playground
+        </button>
+        <button class="tab-btn" data-tab="connect" id="tab-btn-connect">
+          <i class="bi bi-plug-fill tab-icon"></i> Kết Nối MCP (Cursor / Claude)
+        </button>
+        <button class="tab-btn" data-tab="docs" id="tab-btn-docs">
+          <i class="bi bi-journal-code tab-icon"></i> Danh Sách Tools & Schemas
+        </button>
+      </div>
+    </nav>
+
+    <!-- TAB 1: PLAYGROUND -->
+    <section class="tab-panel active" id="panel-playground">
+      <div class="playground-layout">
+        
+        <!-- Left: Tool Selector & Inputs -->
+        <div class="tool-controls-card glass-card">
+          <h2 class="section-title">
+            <i class="bi bi-sliders"></i> Chọn Tool MCP Cần Thực Thi
+          </h2>
+
+          <div class="tool-selector-group">
+            <label class="input-label" for="select-mcp-tool">Công cụ MCP:</label>
+            <select id="select-mcp-tool" class="form-select">
+              <option value="tra_cuu_tthc_gia_lai" style="font-weight: 600; color: #38bdf8;">tra_cuu_tthc_gia_lai (TTHC Tỉnh Gia Lai)</option>
+              <option value="tra_cuu_tthc_noi_bo_gia_lai" style="font-weight: 600; color: #e879f9;">tra_cuu_tthc_noi_bo_gia_lai (TTHC Nội Bộ Gia Lai)</option>
+              <option value="tra_cuu_tthc_noi_bo" style="font-weight: 600; color: #c084fc;">tra_cuu_tthc_noi_bo (TTHC Nội Bộ)</option>
+              <option value="tra_cuu_theo_ma_tthc">tra_cuu_theo_ma_tthc (Chi tiết chuyên sâu)</option>
+              <option value="goi_y_thu_tuc_lien_quan">goi_y_thu_tuc_lien_quan (Gợi ý liên quan)</option>
+              <option value="tim_kiem_theo_ten_tthc" selected>tim_kiem_theo_ten_tthc (Tìm theo tên)</option>
+              <option value="loc_theo_cap_thuc_hien">loc_theo_cap_thuc_hien (Lọc theo Cấp)</option>
+              <option value="loc_theo_linh_vuc">loc_theo_linh_vuc (Lọc theo Lĩnh vực)</option>
+              <option value="tim_kiem_tong_hop">tim_kiem_tong_hop (Đa tiêu chí nâng cao)</option>
+              <option value="thong_tin_mcp_server">thong_tin_mcp_server (Thông tin hệ thống)</option>
+            </select>
+          </div>
+
+          <!-- Dynamic Parameter Forms -->
+          <form id="tool-params-form" class="tool-form">
+            
+            <!-- Tool: tra_cuu_theo_ma_tthc -->
+            <div class="param-group" id="params-tra_cuu_theo_ma_tthc" style="display: none;">
+              <label class="input-label" for="input-ma-tthc">Mã TTHC hoặc Tên thủ tục (*):</label>
+              <input type="text" id="input-ma-tthc" class="form-input" placeholder="Ví dụ: 6.006781 hoặc đăng ký kết hôn" value="6.006781">
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="select-detail-phan-muc">Phân mục trích xuất:</label>
+                  <select id="select-detail-phan-muc" class="form-select">
+                    <option value="tat_ca" selected>Toàn bộ thông tin</option>
+                    <option value="ho_so">Thành phần hồ sơ</option>
+                    <option value="trinh_tu">Trình tự các bước thực hiện</option>
+                    <option value="chi_phi">Phí, Lệ phí giải quyết</option>
+                    <option value="thoi_han">Thời hạn giải quyết</option>
+                    <option value="can_cu_phap_ly">Căn cứ pháp lý</option>
+                    <option value="yeu_cau_dieu_kien">Yêu cầu, điều kiện</option>
+                  </select>
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-detail-format">Định dạng kết quả:</label>
+                  <select id="select-detail-format" class="form-select">
+                    <option value="markdown" selected>Markdown (Văn bản đẹp)</option>
+                    <option value="json">JSON (Cấu trúc sạch)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="quick-chips">
+                <span class="chip-label">Mẫu nhanh:</span>
+                <button type="button" class="btn-chip" data-fill-code="6.006781">6.006781 (Đăng kiểm)</button>
+                <button type="button" class="btn-chip" data-fill-code="1.117102">1.117102 (Huy chương TNXP)</button>
+                <button type="button" class="btn-chip" data-fill-code="6.006780">6.006780 (Xuất khẩu)</button>
+              </div>
+            </div>
+
+            <!-- Tool: goi_y_thu_tuc_lien_quan -->
+            <div class="param-group" id="params-goi_y_thu_tuc_lien_quan" style="display: none;">
+              <label class="input-label" for="input-related-tthc">Mã TTHC hoặc Tên thủ tục gốc (tùy chọn):</label>
+              <input type="text" id="input-related-tthc" class="form-input" placeholder="Ví dụ: 6.006781 hoặc Đăng ký kết hôn">
+              
+              <label class="input-label mt-2" for="input-related-theme">Chủ đề đời sống / Nghiệp vụ:</label>
+              <input type="text" id="input-related-theme" class="form-input" placeholder="Ví dụ: hộ kinh doanh, cư trú, y tế, sinh con, kết hôn, mua bán đất..." value="hộ kinh doanh">
+              
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="select-related-limit">Số gợi ý tối đa:</label>
+                  <select id="select-related-limit" class="form-select">
+                    <option value="4">4 thủ tục</option>
+                    <option value="6" selected>6 thủ tục</option>
+                    <option value="10">10 thủ tục</option>
+                  </select>
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-related-format">Định dạng:</label>
+                  <select id="select-related-format" class="form-select">
+                    <option value="markdown" selected>Markdown (Phân tích chuỗi)</option>
+                    <option value="json">JSON có cấu trúc</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Chủ đề phổ biến:</span>
+                <button type="button" class="btn-chip" data-fill-theme="hộ kinh doanh">Hộ kinh doanh</button>
+                <button type="button" class="btn-chip" data-fill-theme="cư trú">Cư trú</button>
+                <button type="button" class="btn-chip" data-fill-theme="y tế">Y tế & BHYT</button>
+                <button type="button" class="btn-chip" data-fill-theme="sinh con">Sinh con</button>
+                <button type="button" class="btn-chip" data-fill-theme="kết hôn">Kết hôn</button>
+                <button type="button" class="btn-chip" data-fill-theme="mua bán đất">Mua bán đất</button>
+                <button type="button" class="btn-chip" data-fill-theme="thành lập doanh nghiệp">Lập DN</button>
+                <button type="button" class="btn-chip" data-fill-theme="giấy phép lái xe">Bằng lái xe</button>
+                <button type="button" class="btn-chip" data-fill-theme="hộ chiếu">Hộ chiếu</button>
+              </div>
+            </div>
+
+            <!-- Tool: tim_kiem_theo_ten_tthc -->
+            <div class="param-group" id="params-tim_kiem_theo_ten_tthc">
+              <label class="input-label" for="input-ten-tthc">Tên thủ tục hoặc từ khóa (*):</label>
+              <input type="text" id="input-ten-tthc" class="form-input" placeholder="Ví dụ: kết hôn, hộ chiếu, đất đai, cấp giấy..." value="đất đai">
+              <span class="helper-text">Hỗ trợ tìm kiếm thông minh có dấu và không dấu.</span>
+              <div class="quick-chips">
+                <span class="chip-label">Từ khóa hot:</span>
+                <button type="button" class="btn-chip" data-fill-query="đất đai">Đất đai</button>
+                <button type="button" class="btn-chip" data-fill-query="hộ chiếu">Hộ chiếu</button>
+                <button type="button" class="btn-chip" data-fill-query="hộ tịch">Hộ tịch</button>
+                <button type="button" class="btn-chip" data-fill-query="xuất nhập khẩu">Xuất nhập khẩu</button>
+              </div>
+            </div>
+
+            <!-- Tool: loc_theo_cap_thuc_hien -->
+            <div class="param-group" id="params-loc_theo_cap_thuc_hien" style="display: none;">
+              <label class="input-label" for="select-cap-thuc-hien">Cấp thực hiện (*):</label>
+              <select id="select-cap-thuc-hien" class="form-select">
+                <option value="Cấp Bộ">Cấp Bộ</option>
+                <option value="Cấp tỉnh">Cấp tỉnh</option>
+                <option value="Cấp xã">Cấp xã</option>
+                <option value="Cơ quan khác">Cơ quan khác</option>
+                <option value="Chưa xác định">Chưa xác định</option>
+              </select>
+              <label class="input-label mt-2" for="input-cap-keyword">Từ khóa tìm kiếm phụ (tùy chọn):</label>
+              <input type="text" id="input-cap-keyword" class="form-input" placeholder="Ví dụ: đăng kiểm, cấp phép...">
+            </div>
+
+            <!-- Tool: loc_theo_linh_vuc -->
+            <div class="param-group" id="params-loc_theo_linh_vuc" style="display: none;">
+              <label class="input-label" for="select-linh-vuc">Lĩnh vực (*):</label>
+              <select id="select-linh-vuc" class="form-select">
+                <option value="Hộ tịch">Hộ tịch (58 thủ tục: khai sinh, kết hôn, khai tử...)</option>
+                <option value="Kinh doanh">Kinh doanh / Doanh nghiệp (Thành lập, cấp phép...)</option>
+                <option value="Xây dựng">Xây dựng (33 thủ tục: cấp phép, quy hoạch...)</option>
+                <option value="Đất đai" selected>Đất đai (1,615 thủ tục: sổ đỏ, chuyển nhượng...)</option>
+                <option value="Thuế">Thuế (118 thủ tục: kê khai, hoàn thuế...)</option>
+                <option value="Hải quan">Hải quan (182 thủ tục)</option>
+                <option value="Đăng kiểm">Đăng kiểm (Kiểm định xe, tàu biển...)</option>
+                <option value="Xuất nhập khẩu">Xuất nhập khẩu (105 thủ tục)</option>
+                <option value="Đường bộ">Đường bộ (117 thủ tục)</option>
+                <option value="Hoạt động khoa học và công nghệ">Hoạt động khoa học và công nghệ</option>
+                <option value="Hàng hải và đường thủy nội địa">Hàng hải và đường thủy nội địa</option>
+                <option value="Thành lập và hoạt động ngân hàng">Thành lập và hoạt động ngân hàng</option>
+                <option value="Địa chất và khoáng sản">Địa chất và khoáng sản</option>
+                <option value="Chứng khoán">Chứng khoán</option>
+              </select>
+              <div class="quick-chips">
+                <span class="chip-label">Lĩnh vực thiết yếu:</span>
+                <button type="button" class="btn-chip" data-fill-linhvuc="Hộ tịch">Hộ tịch</button>
+                <button type="button" class="btn-chip" data-fill-linhvuc="Kinh doanh">Kinh doanh</button>
+                <button type="button" class="btn-chip" data-fill-linhvuc="Xây dựng">Xây dựng</button>
+                <button type="button" class="btn-chip" data-fill-linhvuc="Đất đai">Đất đai</button>
+                <button type="button" class="btn-chip" data-fill-linhvuc="Thuế">Thuế</button>
+              </div>
+              <label class="input-label mt-2" for="input-linh-vuc-keyword">Từ khóa tìm kiếm phụ (tùy chọn):</label>
+              <input type="text" id="input-linh-vuc-keyword" class="form-input" placeholder="Ví dụ: khai sinh, giấy phép, cấp giấy...">
+            </div>
+
+
+
+            <!-- Tool: tim_kiem_tong_hop -->
+            <div class="param-group" id="params-tim_kiem_tong_hop" style="display: none;">
+              <div class="form-row">
+                <div class="form-col">
+                  <label class="input-label" for="adv-keyword">Từ khóa nội dung:</label>
+                  <input type="text" id="adv-keyword" class="form-input" placeholder="Tên hoặc nội dung...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="adv-cap">Cấp thực hiện:</label>
+                  <input type="text" id="adv-cap" class="form-input" placeholder="Cấp Bộ, Cấp tỉnh...">
+                </div>
+              </div>
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="adv-linh-vuc">Lĩnh vực:</label>
+                  <input type="text" id="adv-linh-vuc" class="form-input" placeholder="Hộ tịch, Kinh doanh, Xây dựng, Đất đai...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="adv-co-quan">Cơ quan:</label>
+                  <input type="text" id="adv-co-quan" class="form-input" placeholder="Bộ Công thương, Cục...">
+                </div>
+              </div>
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="adv-phi">Lệ phí:</label>
+                  <select id="adv-phi" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="true">Có thu phí</option>
+                    <option value="false">Miễn phí</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tool: tra_cuu_tthc_gia_lai -->
+            <div class="param-group" id="params-tra_cuu_tthc_gia_lai" style="display: none;">
+              <label class="input-label" for="input-gialai-keyword">Từ khóa tìm kiếm TTHC Gia Lai (tùy chọn):</label>
+              <input type="text" id="input-gialai-keyword" class="form-input" placeholder="Ví dụ: đất đai, nút giao, cấp phép, lấn biển, thu hồi...">
+              
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-gialai-code">Mã TTHC cụ thể (tùy chọn):</label>
+                  <input type="text" id="input-gialai-code" class="form-input" placeholder="Ví dụ: 1.115379, 1.014758">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-gialai-cap">Cấp thực hiện:</label>
+                  <select id="select-gialai-cap" class="form-select">
+                    <option value="tat_ca" selected>Tất cả các cấp (Cấp tỉnh & Cấp xã)</option>
+                    <option value="cap_tinh">Cấp tỉnh (Sở ngành, VP ĐKĐĐ)</option>
+                    <option value="cap_xa">Cấp xã / phường / thị trấn</option>
+                    <option value="cap_xa_va_tinh">Liên thông Cấp xã & Cấp tỉnh</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-gialai-co-quan">Cơ quan thực hiện:</label>
+                  <input type="text" id="input-gialai-co-quan" class="form-input" placeholder="Sở ngành, Sở Xây dựng, Pleiku, Chư Sê, UBND...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-gialai-detail">Chế độ hiển thị:</label>
+                  <select id="select-gialai-detail" class="form-select">
+                    <option value="false" selected>Danh sách tóm tắt (Mặc định)</option>
+                    <option value="true">Chi tiết chuyên sâu (Hồ sơ, quy trình)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Lọc nhanh Gia Lai:</span>
+                <button type="button" class="btn-chip" data-fill-gl-cq="Sở ngành">Sở ngành Gia Lai</button>
+                <button type="button" class="btn-chip" data-fill-gl-cap="cap_xa">Cấp Xã</button>
+                <button type="button" class="btn-chip" data-fill-gl-cq="Pleiku">TP. Pleiku</button>
+                <button type="button" class="btn-chip" data-fill-gl-cq="Ban Quản lý Khu kinh tế">BQL Khu kinh tế</button>
+                <button type="button" class="btn-chip" data-fill-gl-code="1.115379">Mã 1.115379</button>
+                <button type="button" class="btn-chip" data-fill-gl-code="1.014758">Mã 1.014758</button>
+              </div>
+            </div>
+
+            <!-- Tool: tra_cuu_tthc_noi_bo -->
+            <div class="param-group" id="params-tra_cuu_tthc_noi_bo" style="display: none;">
+              <label class="input-label" for="input-noibo-keyword">Từ khóa tìm kiếm TTHC nội bộ (tùy chọn):</label>
+              <input type="text" id="input-noibo-keyword" class="form-input" placeholder="Ví dụ: khoáng sản, thi đua, công chức, bổ nhiệm, khen thưởng, giáo dục...">
+              
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-noibo-code">Mã TTHC nội bộ (tùy chọn):</label>
+                  <input type="text" id="input-noibo-code" class="form-input" placeholder="Ví dụ: 6.006791, 5.003975">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-noibo-cap">Cấp thực hiện:</label>
+                  <select id="select-noibo-cap" class="form-select">
+                    <option value="tat_ca" selected>Tất cả các cấp</option>
+                    <option value="cap_bo">Cấp Bộ</option>
+                    <option value="cap_tinh">Cấp tỉnh</option>
+                    <option value="cap_xa">Cấp xã</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-noibo-co-quan">Cơ quan thực hiện / ban hành:</label>
+                  <input type="text" id="input-noibo-co-quan" class="form-input" placeholder="Bộ Nội vụ, Bộ Công thương, Bộ GD&ĐT, UBND tỉnh...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-noibo-nhom">Nhóm TTHC nội bộ:</label>
+                  <select id="select-noibo-nhom" class="form-select">
+                    <option value="tat_ca" selected>Tất cả nhóm</option>
+                    <option value="giua_cac_co_quan">Giữa các cơ quan hành chính nhà nước</option>
+                    <option value="trong_noi_bo">Nội bộ từng cơ quan</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-noibo-linh-vuc">Lĩnh vực nghiệp vụ:</label>
+                  <input type="text" id="input-noibo-linh-vuc" class="form-input" placeholder="Khoáng sản, Thi đua, Công chức viên chức, Môi trường...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-noibo-detail">Chế độ hiển thị:</label>
+                  <select id="select-noibo-detail" class="form-select">
+                    <option value="false" selected>Danh sách tóm tắt (Mặc định)</option>
+                    <option value="true">Chi tiết chuyên sâu (Hồ sơ, quy trình)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Lọc nhanh TTHC nội bộ:</span>
+                <button type="button" class="btn-chip" data-fill-nb-cq="Bộ Công thương">Bộ Công thương</button>
+                <button type="button" class="btn-chip" data-fill-nb-cq="Bộ Nội vụ">Bộ Nội vụ</button>
+                <button type="button" class="btn-chip" data-fill-nb-lv="Thi đua, khen thưởng">Thi đua khen thưởng</button>
+                <button type="button" class="btn-chip" data-fill-nb-cap="cap_bo">Cấp Bộ</button>
+                <button type="button" class="btn-chip" data-fill-nb-code="6.006791">Mã 6.006791</button>
+                <button type="button" class="btn-chip" data-fill-nb-code="5.003975">Mã 5.003975</button>
+              </div>
+            </div>
+
+            <!-- Tool: tra_cuu_tthc_noi_bo_gia_lai -->
+            <div class="param-group" id="params-tra_cuu_tthc_noi_bo_gia_lai" style="display: none;">
+              <label class="input-label" for="input-noibo-gl-keyword">Từ khóa tìm kiếm TTHC nội bộ Gia Lai (tùy chọn):</label>
+              <input type="text" id="input-noibo-gl-keyword" class="form-input" placeholder="Ví dụ: khoáng sản, đất đai, khen thưởng, công chức, pleiku, ngân sách...">
+              
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-noibo-gl-code">Mã TTHC nội bộ (tùy chọn):</label>
+                  <input type="text" id="input-noibo-gl-code" class="form-input" placeholder="Ví dụ: 5.003972, 5.003971, 5.003970">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-noibo-gl-cap">Cấp thực hiện:</label>
+                  <select id="select-noibo-gl-cap" class="form-select">
+                    <option value="tat_ca" selected>Tất cả các cấp</option>
+                    <option value="cap_tinh">Cấp tỉnh</option>
+                    <option value="cap_xa">Cấp xã</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-noibo-gl-co-quan">Cơ quan thực hiện / ban hành:</label>
+                  <input type="text" id="input-noibo-gl-co-quan" class="form-input" placeholder="Chủ tịch UBND tỉnh, Sở Tài nguyên và Môi trường, Sở Nông nghiệp...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-noibo-gl-nhom">Nhóm TTHC nội bộ:</label>
+                  <select id="select-noibo-gl-nhom" class="form-select">
+                    <option value="tat_ca" selected>Tất cả nhóm</option>
+                    <option value="giua_cac_co_quan">Giữa các cơ quan hành chính nhà nước</option>
+                    <option value="trong_noi_bo">Nội bộ từng cơ quan</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-noibo-gl-linh-vuc">Lĩnh vực nghiệp vụ:</label>
+                  <input type="text" id="input-noibo-gl-linh-vuc" class="form-input" placeholder="Địa chất và khoáng sản, Đất đai, Nội vụ, Tài chính...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-noibo-gl-detail">Chế độ hiển thị:</label>
+                  <select id="select-noibo-gl-detail" class="form-select">
+                    <option value="false" selected>Danh sách tóm tắt (Mặc định)</option>
+                    <option value="true">Chi tiết chuyên sâu (Hồ sơ, quy trình)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Lọc nhanh TTHC nội bộ Gia Lai:</span>
+                <button type="button" class="btn-chip" data-fill-nbgl-lv="Địa chất và khoáng sản">Khoáng sản</button>
+                <button type="button" class="btn-chip" data-fill-nbgl-cq="Chủ tịch Ủy ban nhân dân cấp tỉnh">Chủ tịch UBND tỉnh</button>
+                <button type="button" class="btn-chip" data-fill-nbgl-cap="cap_tinh">Cấp tỉnh</button>
+                <button type="button" class="btn-chip" data-fill-nbgl-cap="cap_xa">Cấp xã</button>
+                <button type="button" class="btn-chip" data-fill-nbgl-code="5.003972">Mã 5.003972</button>
+                <button type="button" class="btn-chip" data-fill-nbgl-code="5.003971">Mã 5.003971</button>
+              </div>
+            </div>
+
+            <!-- Pagination options -->
+            <div class="pagination-row" id="common-pagination-controls">
+              <div class="pagination-field">
+                <label for="input-limit">Số lượng (Limit):</label>
+                <select id="input-limit" class="form-select-sm">
+                  <option value="5">5</option>
+                  <option value="10" selected>10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+              </div>
+              <div class="pagination-field">
+                <label for="input-page">Trang (Page):</label>
+                <input type="number" id="input-page" class="form-input-sm" value="1" min="1" max="100">
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="action-buttons-group">
+              <button type="submit" class="btn btn-primary btn-block" id="btn-execute-tool">
+                <span class="btn-spinner" id="execute-spinner" style="display: none;"></span>
+                <span id="btn-execute-text"><i class="bi bi-play-circle-fill"></i> Gọi MCP Tool Call</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right: Execution Result Display -->
+        <div class="result-display-card glass-card">
+          <div class="result-header">
+            <div class="result-title-group">
+              <h2 class="section-title">
+                <i class="bi bi-clipboard-data-fill"></i> Kết Quả Tool Execution
+              </h2>
+              <span class="execution-time-badge" id="execution-time" style="display: none;">0ms</span>
+            </div>
+
+            <div class="view-toggle-group">
+              <button class="toggle-btn active" id="btn-view-rendered">Giao Diện</button>
+              <button class="toggle-btn" id="btn-view-markdown">Markdown</button>
+              <button class="toggle-btn" id="btn-view-json">JSON-RPC</button>
+              <button class="btn btn-secondary btn-xs" id="btn-copy-result" title="Sao chép kết quả">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
+          </div>
+
+          <!-- Result Viewports -->
+          <div class="result-viewport-container">
+            <!-- Rendered View -->
+            <div class="viewport" id="viewport-rendered">
+              <div class="empty-state">
+                <div class="empty-icon"><i class="bi bi-cpu"></i></div>
+                <h3>Sẵn sàng thực thi MCP Tool</h3>
+                <p>Chọn tool ở cột bên trái và nhấn <b>"Gọi MCP Tool Call"</b> để tra cứu dữ liệu trực tiếp từ MCP server.</p>
+              </div>
+            </div>
+
+            <!-- Markdown View -->
+            <pre class="viewport-code" id="viewport-markdown" style="display: none;"><code>// Kết quả định dạng Markdown hiển thị ở đây...</code></pre>
+
+            <!-- Raw JSON-RPC View -->
+            <pre class="viewport-code" id="viewport-json" style="display: none;"><code>// Kết quả phản hồi giao thức JSON-RPC 2.0 hiển thị ở đây...</code></pre>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: CONNECT GUIDES -->
+    <section class="tab-panel" id="panel-connect">
+      <div class="glass-card mb-4">
+        <h2 class="section-title">
+          <i class="bi bi-plug-fill"></i> Hướng Dẫn Tích Hợp MCP Client
+        </h2>
+        <p class="section-desc">
+          Server MCP TTHC hỗ trợ cả hai giao thức: <b>SSE (Server-Sent Events)</b> và <b>Direct HTTP JSON-RPC</b>. Bạn có thể kết nối ngay với Claude Desktop, Cursor AI, Windsurf, v.v.
+        </p>
+
+        <div class="client-tabs">
+          <button class="client-tab active" data-client="cursor">Cursor AI (.cursor/mcp.json)</button>
+          <button class="client-tab" data-client="claude">Claude Desktop</button>
+          <button class="client-tab" data-client="windsurf">Windsurf IDE</button>
+          <button class="client-tab" data-client="openai">OpenAI Plugin (ChatGPT)</button>
+          <button class="client-tab" data-client="openapi">OpenAPI Schema (Custom GPT / Dify)</button>
+          <button class="client-tab" data-client="curl">cURL / HTTP Test</button>
+        </div>
+
+        <div class="code-box-wrapper">
+          <div class="code-box-header">
+            <span class="file-label" id="config-file-label">.cursor/mcp.json</span>
+            <button class="btn btn-secondary btn-xs" id="btn-copy-config">
+              <i class="bi bi-clipboard"></i> Sao chép cấu hình
+            </button>
+          </div>
+          <pre class="code-box"><code id="config-code-display">// Đang tạo mã cấu hình...</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TOOL REFERENCE -->
+    <section class="tab-panel" id="panel-docs">
+      <div class="glass-card">
+        <div class="panel-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+          <div>
+            <h2 class="section-title">
+              <i class="bi bi-journal-code"></i> Danh Sách Tools & Schemas MCP
+            </h2>
+            <p class="section-desc" style="margin-bottom: 0;">
+              Toàn bộ 11 công cụ MCP chuẩn hóa hỗ trợ tra cứu, trích xuất dữ liệu và tích hợp trợ lý AI thông minh:
+            </p>
+          </div>
+          <a href="/openapi.json" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="bi bi-filetype-json"></i> OpenAPI 3.1.0 Schema
+          </a>
+        </div>
+
+        <!-- Modern Toolbar: Search & Category Filter -->
+        <div class="docs-toolbar">
+          <div class="docs-search-row">
+            <div class="docs-search-box">
+              <i class="bi bi-search search-icon"></i>
+              <input type="text" id="input-search-tools" placeholder="Tìm kiếm công cụ theo tên tool, alias, từ khóa, tham số (ví dụ: gia_lai, noi_bo, ho_so, ma_tthc)...">
+              <button type="button" class="btn-clear-tool-search" id="btn-clear-tool-search" title="Xóa tìm kiếm" style="display: none;">
+                <i class="bi bi-x-circle-fill"></i>
+              </button>
+            </div>
+          </div>
+          <div class="docs-filter-chips">
+            <span class="filter-chip-label"><i class="bi bi-funnel"></i> Phân loại:</span>
+            <button type="button" class="filter-chip active" data-filter="all">Tất cả (12)</button>
+            <button type="button" class="filter-chip" data-filter="chuyen_sau">Chuyên sâu</button>
+            <button type="button" class="filter-chip" data-filter="tra_cuu">Tra cứu</button>
+            <button type="button" class="filter-chip" data-filter="bo_loc">Bộ lọc</button>
+            <button type="button" class="filter-chip" data-filter="goi_y">Gợi ý sự kiện</button>
+            <button type="button" class="filter-chip" data-filter="openai">Chuẩn OpenAI</button>
+            <button type="button" class="filter-chip" data-filter="he_thong">Hệ thống</button>
+          </div>
+        </div>
+
+        <div class="tools-grid" id="tools-doc-grid">
+          
+          <!-- TOOL 1: tra_cuu_tthc_gia_lai -->
+          <div class="tool-doc-card" data-tool="tra_cuu_tthc_gia_lai" data-category="chuyen_sau" style="--card-glow: rgba(56, 189, 248, 0.25); --accent-line: #38bdf8;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #38bdf8; background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.28);">
+                  <i class="bi bi-geo-alt-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tra_cuu_tthc_gia_lai</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tra_cuu_tthc_gia_lai" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tthc_gia_lai</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-warning"><i class="bi bi-dot"></i> Tỉnh Gia Lai</span>
+            </div>
+            <p class="tool-doc-desc">
+              Tra cứu chuyên sâu các Thủ tục Hành chính thuộc tỉnh Gia Lai. Bao gồm cấp tỉnh, cấp xã, các Sở ngành (Xây dựng, Nông nghiệp, Tài chính...), Hệ thống Chi nhánh VPĐKĐĐ (Pleiku, Chư Sê, Đak Đoa, An Khê, Ayun Pa, Kbang...), Ban Quản lý Khu kinh tế, Chủ tịch UBND tỉnh...
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">5 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">tu_khoa</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Tìm theo tên, mã hoặc nội dung nghiệp vụ.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">ma_tthc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Mã TTHC thuộc tỉnh Gia Lai để xem chi tiết ngay.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">cap_thuc_hien</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: tat_ca</span>
+                  </div>
+                  <div class="param-desc"><code>tat_ca</code>, <code>cap_tinh</code>, <code>cap_xa</code>, <code>cap_xa_va_tinh</code>.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">co_quan_thuc_hien</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Lọc theo cơ quan (Sở ngành, VPĐKĐĐ Pleiku, Chư Sê, UBND cấp xã...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">chi_tiet</code>
+                    <span class="param-type">boolean</span>
+                    <span class="param-req optional">mặc định: false</span>
+                  </div>
+                  <div class="param-desc"><code>true</code> để trích xuất đầy đủ hồ sơ, trình tự, căn cứ pháp lý.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tra_cuu_tthc_gia_lai">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 2: tra_cuu_tthc_noi_bo -->
+          <div class="tool-doc-card" data-tool="tra_cuu_tthc_noi_bo" data-category="chuyen_sau" style="--card-glow: rgba(168, 85, 247, 0.25); --accent-line: #c084fc;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #c084fc; background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.28);">
+                  <i class="bi bi-diagram-3-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tra_cuu_tthc_noi_bo</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tra_cuu_tthc_noi_bo" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tthc_noi_bo</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(168, 85, 247, 0.18); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35);"><i class="bi bi-dot"></i> TTHC Nội Bộ</span>
+            </div>
+            <p class="tool-doc-desc">
+              Tra cứu chuyên sâu các Thủ tục Hành chính nội bộ trong hệ thống hành chính nhà nước. Gồm 2 nhóm: TTHC giữa các cơ quan hành chính nhà nước (liên thông, đa cơ quan/cấp) và TTHC nội bộ trong từng cơ quan (Bộ ngành, UBND cấp tỉnh, Sở ban ngành...).
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">7 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">tu_khoa</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Từ khóa tìm kiếm theo tên, mã hoặc nội dung nghiệp vụ nội bộ.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">ma_tthc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Mã TTHC nội bộ cụ thể (ví dụ: <code>6.006791</code>, <code>5.003975</code>) để xem chi tiết.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">co_quan</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Cơ quan thực hiện hoặc công bố (Bộ Nội vụ, Bộ Công thương, UBND tỉnh...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">linh_vuc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Lĩnh vực nội bộ (Khoáng sản, Thi đua khen thưởng, Công chức...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">cap_thuc_hien</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: tat_ca</span>
+                  </div>
+                  <div class="param-desc"><code>tat_ca</code>, <code>cap_bo</code>, <code>cap_tinh</code>, <code>cap_xa</code>.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">nhom_noi_bo</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: tat_ca</span>
+                  </div>
+                  <div class="param-desc"><code>tat_ca</code>, <code>giua_cac_co_quan</code>, <code>trong_noi_bo</code>.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">chi_tiet</code>
+                    <span class="param-type">boolean</span>
+                    <span class="param-req optional">mặc định: false</span>
+                  </div>
+                  <div class="param-desc"><code>true</code> để xem chi tiết đầy đủ hồ sơ, trình tự từng bước.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tra_cuu_tthc_noi_bo">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL: tra_cuu_tthc_noi_bo_gia_lai -->
+          <div class="tool-doc-card" data-tool="tra_cuu_tthc_noi_bo_gia_lai" data-category="chuyen_sau" style="--card-glow: rgba(217, 70, 239, 0.25); --accent-line: #d946ef;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #e879f9; background: rgba(217, 70, 239, 0.12); border-color: rgba(217, 70, 239, 0.28);">
+                  <i class="bi bi-building-gear"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tra_cuu_tthc_noi_bo_gia_lai</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tra_cuu_tthc_noi_bo_gia_lai" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tthc_noi_bo_gia_lai</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(217, 70, 239, 0.18); color: #e879f9; border: 1px solid rgba(217, 70, 239, 0.35);"><i class="bi bi-dot"></i> TTHC Nội Bộ Gia Lai</span>
+            </div>
+            <p class="tool-doc-desc">
+              Tra cứu chuyên sâu các Thủ tục Hành chính Nội bộ thuộc phạm vi tỉnh Gia Lai. Bao gồm các thủ tục cấp tỉnh, cấp xã, UBND tỉnh Gia Lai, Chủ tịch UBND tỉnh, các Sở ban ngành địa phương theo Nghị định số 385/2026/NĐ-CP (Khoáng sản, Đất đai, Nội vụ, Tài chính...).
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">7 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">tu_khoa</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Từ khóa tìm kiếm TTHC nội bộ tỉnh Gia Lai theo tên hoặc nội dung nghiệp vụ.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">ma_tthc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Mã TTHC nội bộ cụ thể (ví dụ: <code>5.003972</code>, <code>5.003971</code>) để xem chi tiết.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">cap_thuc_hien</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: tat_ca</span>
+                  </div>
+                  <div class="param-desc"><code>tat_ca</code>, <code>cap_tinh</code>, <code>cap_xa</code>.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">co_quan</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Cơ quan thực hiện tại Gia Lai (Chủ tịch UBND tỉnh, Sở TN&MT, UBND cấp xã...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">linh_vuc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Lĩnh vực nội bộ (Địa chất khoáng sản, Đất đai, Thi đua khen thưởng...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">nhom_noi_bo</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: tat_ca</span>
+                  </div>
+                  <div class="param-desc"><code>tat_ca</code>, <code>giua_cac_co_quan</code>, <code>trong_noi_bo</code>.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">chi_tiet</code>
+                    <span class="param-type">boolean</span>
+                    <span class="param-req optional">mặc định: false</span>
+                  </div>
+                  <div class="param-desc"><code>true</code> để xem chi tiết đầy đủ hồ sơ, trình tự từng bước.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tra_cuu_tthc_noi_bo_gia_lai">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 3: tra_cuu_theo_ma_tthc -->
+          <div class="tool-doc-card" data-tool="tra_cuu_theo_ma_tthc" data-category="tra_cuu" style="--card-glow: rgba(6, 182, 212, 0.25); --accent-line: #06b6d4;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #06b6d4; background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.28);">
+                  <i class="bi bi-file-earmark-code-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tra_cuu_theo_ma_tthc</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tra_cuu_theo_ma_tthc" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">chi_tiet_tthc</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-primary"><i class="bi bi-dot"></i> Chi Tiết Chuyên Sâu</span>
+            </div>
+            <p class="tool-doc-desc">
+              Truy xuất toàn diện thông tin chi tiết chuyên sâu của TTHC theo mã (ví dụ: <code>6.006781</code>) hoặc tên thủ tục. Cho phép trích xuất từng phân mục độc lập và xuất định dạng Markdown hoặc JSON cấu trúc sạch cho AI Agent.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">3 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">ma_tthc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Mã TTHC (ví dụ <code>6.006781</code>) hoặc tên thủ tục.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">phan_muc</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: tat_ca</span>
+                  </div>
+                  <div class="param-desc"><code>tat_ca</code>, <code>ho_so</code>, <code>trinh_tu</code>, <code>chi_phi</code>, <code>thoi_han</code>, <code>can_cu_phap_ly</code>.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">dinh_dang</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: markdown</span>
+                  </div>
+                  <div class="param-desc"><code>markdown</code> (chuẩn đẹp) hoặc <code>json</code> (dữ liệu thô cho code).</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tra_cuu_theo_ma_tthc">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 4: tim_kiem_theo_ten_tthc -->
+          <div class="tool-doc-card" data-tool="tim_kiem_theo_ten_tthc" data-category="tra_cuu" style="--card-glow: rgba(16, 185, 129, 0.25); --accent-line: #10b981;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #10b981; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.28);">
+                  <i class="bi bi-search"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tim_kiem_theo_ten_tthc</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tim_kiem_theo_ten_tthc" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tim_kiem_tthc</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-success"><i class="bi bi-dot"></i> Tìm Kiếm Tên</span>
+            </div>
+            <p class="tool-doc-desc">
+              Tìm kiếm danh sách TTHC theo tên hoặc từ khóa nội dung (hỗ trợ tiếng Việt có dấu hoặc không dấu, tự động chuẩn hóa dấu). Tốc độ phản hồi cực nhanh dưới 15ms.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">3 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">ten_tthc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Từ khóa tên thủ tục (ví dụ: "kết hôn", "hộ kinh doanh", "cấp phép").</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">limit</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req optional">mặc định: 10</span>
+                  </div>
+                  <div class="param-desc">Số kết quả tối đa mỗi trang (1-50).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">page</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req optional">mặc định: 1</span>
+                  </div>
+                  <div class="param-desc">Trang kết quả cần hiển thị.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tim_kiem_theo_ten_tthc">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 5: loc_theo_cap_thuc_hien -->
+          <div class="tool-doc-card" data-tool="loc_theo_cap_thuc_hien" data-category="bo_loc" style="--card-glow: rgba(59, 130, 246, 0.25); --accent-line: #3b82f6;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #3b82f6; background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.28);">
+                  <i class="bi bi-layers-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">loc_theo_cap_thuc_hien</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="loc_theo_cap_thuc_hien" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">loc_tthc_theo_cap</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-info"><i class="bi bi-dot"></i> Bộ Lọc Cấp</span>
+            </div>
+            <p class="tool-doc-desc">
+              Lọc danh sách thủ tục theo Cấp thực hiện (Cấp Bộ, Cấp tỉnh, Cấp xã, Cơ quan khác). Hỗ trợ kết hợp từ khóa lọc nâng cao và phân trang chuẩn.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">4 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">cap_thuc_hien</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Tên cấp thực hiện (ví dụ: "Cấp Bộ", "Cấp tỉnh", "Cấp xã").</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">tu_khoa</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Từ khóa kết hợp để thu hẹp kết quả trong cấp đó.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">limit</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req optional">mặc định: 10</span>
+                  </div>
+                  <div class="param-desc">Số lượng kết quả mỗi trang.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">page</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req optional">mặc định: 1</span>
+                  </div>
+                  <div class="param-desc">Trang cần xem.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="loc_theo_cap_thuc_hien">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 6: loc_theo_linh_vuc -->
+          <div class="tool-doc-card" data-tool="loc_theo_linh_vuc" data-category="bo_loc" style="--card-glow: rgba(245, 158, 11, 0.25); --accent-line: #f59e0b;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.28);">
+                  <i class="bi bi-tags-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">loc_theo_linh_vuc</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="loc_theo_linh_vuc" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">loc_tthc_theo_linh_vuc</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-warning"><i class="bi bi-dot"></i> Lĩnh Vực</span>
+            </div>
+            <p class="tool-doc-desc">
+              Lọc danh sách thủ tục theo Lĩnh vực thiết yếu (Hộ tịch, Thành lập kinh doanh, Đất đai, Xây dựng, Thuế, Hải quan, Đăng kiểm, Giao thông...).
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">4 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">linh_vuc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Tên lĩnh vực nghiệp vụ (ví dụ: <code>Đất đai</code>, <code>Hộ tịch</code>, <code>Xây dựng</code>).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">tu_khoa</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Từ khóa bổ sung để lọc hẹp trong lĩnh vực.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">limit</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req optional">mặc định: 10</span>
+                  </div>
+                  <div class="param-desc">Số lượng kết quả tối đa.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">page</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req optional">mặc định: 1</span>
+                  </div>
+                  <div class="param-desc">Trang kết quả.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="loc_theo_linh_vuc">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 7: tim_kiem_tong_hop -->
+          <div class="tool-doc-card" data-tool="tim_kiem_tong_hop" data-category="bo_loc" style="--card-glow: rgba(139, 92, 246, 0.25); --accent-line: #8b5cf6;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #8b5cf6; background: rgba(139, 92, 246, 0.12); border-color: rgba(139, 92, 246, 0.28);">
+                  <i class="bi bi-funnel-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tim_kiem_tong_hop</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tim_kiem_tong_hop" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tra_cuu_nang_cao</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-purple"><i class="bi bi-dot"></i> Đa Tiêu Chí</span>
+            </div>
+            <p class="tool-doc-desc">
+              Tìm kiếm đa tiêu chí kết hợp từ khóa, lĩnh vực, cấp thực hiện, cơ quan thực hiện và lọc thủ tục có thu phí hay miễn phí giải quyết.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">7 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">tu_khoa</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Từ khóa tìm kiếm theo tên hoặc nội dung.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">linh_vuc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Lĩnh vực nghiệp vụ cần lọc.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">cap_thuc_hien</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Cấp thực hiện (Cấp Bộ, Cấp tỉnh, Cấp xã...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">co_quan</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Cơ quan thực hiện (Bộ GTVT, Sở Y tế, UBND TP...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">co_thu_phi</code>
+                    <span class="param-type">boolean</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc"><code>true</code>: có phí; <code>false</code>: miễn phí.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tim_kiem_tong_hop">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 8: goi_y_thu_tuc_lien_quan -->
+          <div class="tool-doc-card" data-tool="goi_y_thu_tuc_lien_quan" data-category="goi_y" style="--card-glow: rgba(20, 184, 166, 0.25); --accent-line: #14b8a6;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #14b8a6; background: rgba(20, 184, 166, 0.12); border-color: rgba(20, 184, 166, 0.28);">
+                  <i class="bi bi-bezier2"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">goi_y_thu_tuc_lien_quan</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="goi_y_thu_tuc_lien_quan" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">thu_tuc_lien_quan</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-cyan"><i class="bi bi-dot"></i> Chuỗi Sự Kiện</span>
+            </div>
+            <p class="tool-doc-desc">
+              Gợi ý chuỗi thủ tục hành chính liên quan theo ngữ cảnh sự kiện đời sống & kinh doanh (sinh con, kết hôn, hộ kinh doanh, cư trú, y tế, mua bán nhà đất, thành lập doanh nghiệp...) hoặc liên thông cùng thủ tục gốc.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">4 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">ma_hoac_ten_tthc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Mã hoặc tên thủ tục gốc đang thực hiện.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">chu_de</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Tên chủ đề / sự kiện đời sống (ví dụ: <code>sinh con</code>, <code>hộ kinh doanh</code>).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">limit</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req optional">mặc định: 6</span>
+                  </div>
+                  <div class="param-desc">Số lượng thủ tục cần gợi ý (1-20).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">dinh_dang</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: markdown</span>
+                  </div>
+                  <div class="param-desc"><code>markdown</code> hoặc <code>json</code>.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="goi_y_thu_tuc_lien_quan">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 9: thong_tin_mcp_server -->
+          <div class="tool-doc-card" data-tool="thong_tin_mcp_server" data-category="he_thong" style="--card-glow: rgba(99, 102, 241, 0.25); --accent-line: #6366f1;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #6366f1; background: rgba(99, 102, 241, 0.12); border-color: rgba(99, 102, 241, 0.28);">
+                  <i class="bi bi-cpu-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">thong_tin_mcp_server</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="thong_tin_mcp_server" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">mcp_info</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge badge-info"><i class="bi bi-dot"></i> Hệ Thống</span>
+            </div>
+            <p class="tool-doc-desc">
+              Lấy thông tin chi tiết về phiên bản ứng dụng MCP, tác giả, chuẩn giao thức, thời điểm cập nhật và tình trạng kết nối cơ sở dữ liệu quốc gia hơn 6,700 thủ tục.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">0 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-desc" style="color: var(--text-dim); font-style: italic;">
+                  Không yêu cầu tham số đầu vào. Trả về cấu trúc JSON / Markdown về phiên bản và trạng thái runtime.
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="thong_tin_mcp_server">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-lightning-charge-fill"></i> MCP & REST</span>
+            </div>
+          </div>
+
+          <!-- TOOL 10: search (Chuẩn OpenAI Agent) -->
+          <div class="tool-doc-card" data-tool="search" data-category="openai" style="--card-glow: rgba(244, 63, 94, 0.25); --accent-line: #f43f5e;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #fb7185; background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.28);">
+                  <i class="bi bi-robot"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">search</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="search" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Chuẩn:</span>
+                    <span class="alias-code">OpenAI Plugins</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(244, 63, 94, 0.18); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.35);"><i class="bi bi-dot"></i> OpenAI Agent</span>
+            </div>
+            <p class="tool-doc-desc">
+              Công cụ tìm kiếm thủ tục hành chính Việt Nam theo chuẩn OpenAI Agent Plugins & Deep Research Connector. Trả về cấu trúc JSON sạch <code>{"results":[{"id","title","url"}]}</code> để AI tiếp tục gọi <code>fetch</code>.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">1 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">query</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Từ khóa tìm kiếm thủ tục trong CSDL Quốc gia.</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tim_kiem_theo_ten_tthc">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-openai"></i> OpenAI Standard</span>
+            </div>
+          </div>
+
+          <!-- TOOL 11: fetch (Chuẩn OpenAI Agent) -->
+          <div class="tool-doc-card" data-tool="fetch" data-category="openai" style="--card-glow: rgba(244, 63, 94, 0.25); --accent-line: #f43f5e;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #fb7185; background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.28);">
+                  <i class="bi bi-cloud-arrow-down-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">fetch</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="fetch" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Chuẩn:</span>
+                    <span class="alias-code">OpenAI Plugins</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(244, 63, 94, 0.18); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.35);"><i class="bi bi-dot"></i> OpenAI Agent</span>
+            </div>
+            <p class="tool-doc-desc">
+              Công cụ trích xuất toàn văn nội dung TTHC (hồ sơ, các bước giải quyết, căn cứ pháp lý, lệ phí) theo <code>id</code> hoặc mã TTHC theo chuẩn OpenAI Agent Plugins.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">1 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">id</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Mã định danh hoặc mã TTHC (ví dụ: <code>2.002189</code> hoặc <code>019d2bfd-...</code>).</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tra_cuu_theo_ma_tthc">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
+              </button>
+              <span class="tool-badge-protocol"><i class="bi bi-openai"></i> OpenAI Standard</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Empty state when search has 0 results -->
+        <div class="docs-empty-state" id="docs-empty-notice" style="display: none;">
+          <i class="bi bi-search"></i>
+          <h3 style="font-size: 1.1rem; margin-bottom: 6px; color: #f1f5f9;">Không tìm thấy công cụ phù hợp</h3>
+          <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 12px;">Thử tìm kiếm với từ khóa khác hoặc bấm nút "Tất cả" bên trên để xem lại toàn bộ công cụ.</p>
+          <button type="button" class="btn btn-secondary btn-xs" id="btn-reset-tools-filter">
+            <i class="bi bi-arrow-counterclockwise"></i> Đặt lại bộ lọc
+          </button>
+        </div>
+
+        <div style="margin-top: 28px; text-align: center;">
+          <a href="/openapi.json" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
+            <i class="bi bi-filetype-json"></i> Xem Toàn Bộ OpenAPI Schema (/openapi.json)
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="modal-overlay" id="detail-modal" style="display: none;">
+    <div class="modal-card glass-card">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <h3 class="modal-title" id="modal-tthc-title">Chi tiết thủ tục hành chính</h3>
+        </div>
+        <div class="modal-header-actions" id="modal-header-actions">
+          <div class="modal-view-mode-toggle" id="modal-view-mode-toggle" style="display: none;">
+            <button class="btn btn-secondary btn-xs active" id="btn-modal-mode-rendered" title="Xem giao diện trình bày trực quan">
+              <i class="bi bi-layout-text-window-reverse"></i> Giao diện
+            </button>
+            <button class="btn btn-secondary btn-xs" id="btn-modal-mode-markdown" title="Xem văn bản Markdown có cấu trúc">
+              <i class="bi bi-markdown-fill"></i> Markdown
+            </button>
+          </div>
+          <button class="btn btn-secondary btn-xs" id="btn-modal-copy-md" title="Sao chép nội dung Markdown có cấu trúc" style="display: none;">
+            <i class="bi bi-clipboard"></i> Sao chép MD
+          </button>
+          <button class="btn btn-primary btn-xs" id="btn-modal-download-md" title="Xuất và tải về tệp tin .md có cấu trúc đầy đủ" style="display: none;">
+            <i class="bi bi-download"></i> Xuất .md
+          </button>
+          <button class="modal-close" id="btn-close-modal" title="Đóng cửa sổ">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body" id="modal-tthc-body">
+        <div class="loader-container">
+          <div class="spinner"></div>
+          <p>Đang tải chi tiết hồ sơ...</p>
+        </div>
+      </div>
+      <div class="modal-body modal-markdown-viewport" id="modal-tthc-markdown-viewport" style="display: none;">
+        <pre><code id="modal-tthc-markdown-code"></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <div class="footer-top-row">
+        <div class="footer-brand">
+          <span class="footer-brand-title">
+            <img src="https://ik.imagekit.io/97moqce0c/Static/logo_uoCW9PIyz.png" alt="MCP Logo" class="footer-mini-logo">
+            MCP TTHC Server
+          </span>
+        </div>
+        <div class="footer-badges">
+          <span class="badge badge-warning" id="footer-version-badge">v1.1.0</span>
+          <span class="badge badge-primary">Model Context Protocol</span>
+          <span class="badge badge-success">Netlify Serverless</span>
+        </div>
+      </div>
+      <div class="footer-bottom-row">
+        <p>© <span id="current-year">2026</span> MCP Server TTHC DVCQG • Phát triển bởi Kyn Chou</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

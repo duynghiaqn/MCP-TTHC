@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "tthc-dvcqg": {
+      "command": "node",
+      "args": [
+        "dist/src/dev-server.js"
+      ],
+      "env": {
+        "PORT": "3000",
+        "API_KEY": "YOUR_SECRET_API_KEY"
+      }
+    },
+    "tthc-dvcqg-sse": {
+      "url": "http://localhost:3000/sse?api-key=YOUR_SECRET_API_KEY"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "models": [],
+  "mcpServers": [
+    {
+      "name": "tthc-dvcqg",
+      "url": "https://mcp-tthc.netlify.app/sse?api-key=YOUR_SECRET_API_KEY"
+    }
+  ]
+}

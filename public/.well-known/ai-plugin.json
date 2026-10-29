@@ -1,0 +1,18 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Tra cứu TTHC Quốc Gia",
+  "name_for_model": "tra_cuu_tthc_dvcqg",
+  "description_for_human": "Tra cứu thông tin thủ tục hành chính, dịch vụ công quốc gia Việt Nam (hồ sơ, lệ phí, thời hạn, cơ quan giải quyết, gợi ý thủ tục liên quan, TTHC tỉnh Gia Lai).",
+  "description_for_model": "Plugin tra cứu toàn diện cơ sở dữ liệu quốc gia về Thủ tục Hành chính (TTHC) Việt Nam. Cho phép tìm kiếm thủ tục theo tên hoặc từ khóa, truy xuất chi tiết chuyên sâu theo mã TTHC (trình tự các bước, hồ sơ, thời hạn, lệ phí, căn cứ pháp lý), lọc theo cấp thực hiện, lọc theo lĩnh vực, tra cứu chuyên sâu TTHC tỉnh Gia Lai, dùng các tool OpenAI search/fetch và gợi ý chuỗi thủ tục theo sự kiện đời sống / kinh doanh.",
+  "auth": {
+    "type": "user_http",
+    "authorization_type": "bearer"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://mcp-tthc.netlify.app/openapi.json"
+  },
+  "logo_url": "https://mcp-tthc.netlify.app/logo.svg",
+  "contact_email": "info@dnncloud.net",
+  "legal_info_url": "https://mcp-tthc.netlify.app/"
+}

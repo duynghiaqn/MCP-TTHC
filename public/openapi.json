@@ -1,0 +1,1111 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MCP Server Tra Cứu TTHC DVCQG",
+    "version": "1.1.0",
+    "description": "API & MCP Server tra cứu Thủ tục Hành chính Quốc gia Việt Nam. Hỗ trợ tra cứu theo mã TTHC, tìm kiếm theo tên, phân cấp thực hiện, phân lĩnh vực và thống kê tổng hợp.",
+    "contact": {
+      "name": "KynChou"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://mcp-tthc.netlify.app",
+      "description": "Server hiện tại"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyHeader": []
+    },
+    {
+      "apiKeyQuery": []
+    },
+    {
+      "apiKeyQueryLegacy": []
+    }
+  ],
+  "paths": {
+    "/.well-known/ai-plugin.json": {
+      "get": {
+        "security": [],
+        "operationId": "getAiPluginManifest",
+        "summary": "Lấy manifest cấu hình OpenAI Plugin (ai-plugin.json)",
+        "responses": {
+          "200": {
+            "description": "Manifest OpenAI Plugin v1 hợp lệ"
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "get": {
+        "operationId": "getMcpServerInfo",
+        "summary": "Lấy thông tin máy chủ MCP, trạng thái và hướng dẫn kết nối",
+        "responses": {
+          "200": {
+            "description": "Thông tin hệ thống và hướng dẫn kết nối MCP"
+          }
+        }
+      },
+      "post": {
+        "operationId": "executeMcpJsonRpc",
+        "summary": "Thực thi giao thức MCP JSON-RPC 2.0",
+        "description": "Gửi payload JSON-RPC 2.0 để gọi các MCP tools hoặc khởi tạo phiên giao thức Model Context Protocol.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "jsonrpc",
+                  "method",
+                  "id"
+                ],
+                "properties": {
+                  "jsonrpc": {
+                    "type": "string",
+                    "example": "2.0"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "method": {
+                    "type": "string",
+                    "example": "tools/call"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "example": "tim_kiem_theo_ten_tthc"
+                      },
+                      "arguments": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kết quả phản hồi JSON-RPC 2.0 hợp lệ"
+          }
+        }
+      }
+    },
+    "/api/tthc/search": {
+      "get": {
+        "operationId": "searchTTHC",
+        "summary": "Tìm kiếm thủ tục hành chính theo tên hoặc từ khóa",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm (ví dụ: \"đăng ký kết hôn\", \"hộ chiếu\")"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Số lượng kết quả mỗi trang (1-50)"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Số trang"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách kết quả tìm kiếm thủ tục hành chính"
+          }
+        }
+      }
+    },
+    "/api/tthc/detail": {
+      "get": {
+        "operationId": "getTTHCDetail",
+        "summary": "Truy xuất thông tin chi tiết chuyên sâu của thủ tục hành chính",
+        "parameters": [
+          {
+            "name": "ma_tthc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mã TTHC (ví dụ: \"6.006781\"), ID hoặc tên thủ tục"
+          },
+          {
+            "name": "phan_muc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "ho_so",
+                "trinh_tu",
+                "chi_phi",
+                "thoi_han",
+                "can_cu_phap_ly",
+                "yeu_cau_dieu_kien"
+              ],
+              "default": "tat_ca"
+            },
+            "description": "Phân mục chi tiết cần lấy"
+          },
+          {
+            "name": "dinh_dang",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "json"
+              ],
+              "default": "markdown"
+            },
+            "description": "Định dạng dữ liệu trả về"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chi tiết hồ sơ, trình tự, chi phí và căn cứ pháp lý của thủ tục"
+          }
+        }
+      }
+    },
+    "/api/tthc/related": {
+      "get": {
+        "operationId": "getRelatedProcedures",
+        "summary": "Gợi ý các thủ tục hành chính liên quan theo ngữ cảnh đời sống hoặc thủ tục gốc",
+        "parameters": [
+          {
+            "name": "ma_tthc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mã TTHC hoặc tên thủ tục gốc đang xem xét"
+          },
+          {
+            "name": "chu_de",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Chủ đề đời sống / kinh doanh (ví dụ: \"hộ kinh doanh\", \"cư trú\", \"y tế\", \"sinh con\", \"kết hôn\", \"mua bán nhà đất\", \"thành lập doanh nghiệp\")"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 6
+            },
+            "description": "Số lượng thủ tục gợi ý tối đa"
+          },
+          {
+            "name": "dinh_dang",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "json"
+              ],
+              "default": "markdown"
+            },
+            "description": "Định dạng trả về"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách các thủ tục hành chính liên quan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedProceduresResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postRelatedProcedures",
+        "summary": "Gợi ý thủ tục hành chính liên quan (gửi payload JSON)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoiYThuTucLienQuanInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Danh sách các thủ tục hành chính liên quan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedProceduresResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tthc/cap": {
+      "get": {
+        "operationId": "filterByCap",
+        "summary": "Lọc thủ tục hành chính theo Cấp thực hiện",
+        "parameters": [
+          {
+            "name": "cap",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cấp thực hiện (ví dụ: \"Cấp Bộ\", \"Cấp tỉnh\", \"Cấp xã\")"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm phụ"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách thủ tục thuộc cấp thực hiện"
+          }
+        }
+      }
+    },
+    "/api/tthc/linhvuc": {
+      "get": {
+        "operationId": "filterByLinhVuc",
+        "summary": "Lọc thủ tục hành chính theo Lĩnh vực",
+        "parameters": [
+          {
+            "name": "linhvuc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tên lĩnh vực (ví dụ: \"Đất đai\", \"Thuế\", \"Hải quan\")"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm phụ"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách thủ tục thuộc lĩnh vực"
+          }
+        }
+      }
+    },
+    "/api/tthc/coquan": {
+      "get": {
+        "operationId": "filterByCoQuan",
+        "summary": "Lọc thủ tục hành chính theo Cơ quan thực hiện",
+        "parameters": [
+          {
+            "name": "co_quan",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tên cơ quan (ví dụ: \"Cục Đăng kiểm Việt Nam\", \"Bộ Tài chính\")"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm phụ"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách thủ tục thuộc cơ quan thực hiện"
+          }
+        }
+      }
+    },
+    "/api/tthc/advanced": {
+      "get": {
+        "operationId": "advancedSearchTTHC",
+        "summary": "Tìm kiếm tổng hợp TTHC đa tiêu chí (tên, cấp, lĩnh vực, cơ quan, phí)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm tên thủ tục"
+          },
+          {
+            "name": "linhvuc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Lĩnh vực (ví dụ: \"Hộ tịch\", \"Kinh doanh\", \"Xây dựng\", \"Đất đai\")"
+          },
+          {
+            "name": "cap",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cấp thực hiện (ví dụ: \"Cấp Bộ\", \"Cấp tỉnh\", \"Cấp xã\")"
+          },
+          {
+            "name": "co_quan",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cơ quan thực hiện hoặc ban hành"
+          },
+          {
+            "name": "co_thu_phi",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "true: chỉ lấy thủ tục có thu phí, false: chỉ lấy miễn phí"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách kết quả tìm kiếm tổng hợp"
+          }
+        }
+      }
+    },
+    "/api/tthc/gialai": {
+      "get": {
+        "operationId": "searchGiaLaiProcedures",
+        "summary": "Tra cứu chuyên sâu các Thủ tục Hành chính thuộc tỉnh Gia Lai (Cơ quan thực hiện: tỉnh Gia Lai, cấp tỉnh, cấp xã, sở ngành, Chủ tịch UBND...)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm TTHC tỉnh Gia Lai"
+          },
+          {
+            "name": "ma_tthc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mã TTHC cụ thể nếu muốn xem chi tiết"
+          },
+          {
+            "name": "cap",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "cap_tinh",
+                "cap_xa",
+                "cap_xa_va_tinh"
+              ]
+            },
+            "description": "Cấp thực hiện tại Gia Lai"
+          },
+          {
+            "name": "co_quan",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cơ quan thực hiện (Sở ngành, Chi nhánh VPĐKĐĐ, UBND cấp xã, Chủ tịch UBND...)"
+          },
+          {
+            "name": "linh_vuc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Lĩnh vực thực hiện"
+          },
+          {
+            "name": "chi_tiet",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Hiển thị chi tiết toàn bộ hồ sơ và quy trình"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách và thông tin chi tiết TTHC tỉnh Gia Lai"
+          }
+        }
+      }
+    },
+    "/api/tthc/noi-bo": {
+      "get": {
+        "operationId": "searchNoiBoProcedures",
+        "summary": "Tra cứu chuyên sâu các Thủ tục Hành chính nội bộ trong hệ thống hành chính nhà nước (theo Nghị định số 385/2026/NĐ-CP của Chính phủ về kiểm soát thủ tục hành chính)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm TTHC nội bộ"
+          },
+          {
+            "name": "ma_tthc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mã TTHC nội bộ cụ thể nếu muốn xem chi tiết"
+          },
+          {
+            "name": "cap",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "cap_bo",
+                "cap_tinh",
+                "cap_xa"
+              ]
+            },
+            "description": "Cấp thực hiện"
+          },
+          {
+            "name": "co_quan",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cơ quan thực hiện hoặc ban hành/công bố"
+          },
+          {
+            "name": "linh_vuc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Lĩnh vực nghiệp vụ nội bộ"
+          },
+          {
+            "name": "nhom_noi_bo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "giua_cac_co_quan",
+                "trong_noi_bo"
+              ]
+            },
+            "description": "Phân nhóm TTHC nội bộ"
+          },
+          {
+            "name": "chi_tiet",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Hiển thị chi tiết toàn bộ hồ sơ và quy trình"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách và thông tin chi tiết TTHC nội bộ"
+          }
+        }
+      }
+    },
+    "/api/tthc/noi-bo-gia-lai": {
+      "get": {
+        "operationId": "searchNoiBoGiaLaiProcedures",
+        "summary": "Tra cứu chuyên sâu các Thủ tục Hành chính Nội bộ thuộc phạm vi tỉnh Gia Lai",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm TTHC nội bộ tỉnh Gia Lai"
+          },
+          {
+            "name": "ma_tthc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mã TTHC nội bộ cụ thể nếu muốn xem chi tiết"
+          },
+          {
+            "name": "cap",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "cap_tinh",
+                "cap_xa"
+              ]
+            },
+            "description": "Cấp thực hiện tại tỉnh Gia Lai"
+          },
+          {
+            "name": "co_quan",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cơ quan thực hiện hoặc ban hành/công bố"
+          },
+          {
+            "name": "linh_vuc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Lĩnh vực nghiệp vụ nội bộ"
+          },
+          {
+            "name": "nhom_noi_bo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "giua_cac_co_quan",
+                "trong_noi_bo"
+              ]
+            },
+            "description": "Phân nhóm TTHC nội bộ"
+          },
+          {
+            "name": "chi_tiet",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Hiển thị chi tiết toàn bộ hồ sơ và quy trình"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách và thông tin chi tiết TTHC nội bộ tỉnh Gia Lai"
+          }
+        }
+      }
+    },
+    "/api/tthc/stats": {
+      "get": {
+        "operationId": "getStats",
+        "summary": "Thống kê tổng quan cơ sở dữ liệu TTHC",
+        "responses": {
+          "200": {
+            "description": "Thống kê tổng số bản ghi và phân bổ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "security": [],
+        "operationId": "getHealth",
+        "summary": "Kiểm tra trạng thái hoạt động của hệ thống",
+        "responses": {
+          "200": {
+            "description": "Thông tin hệ thống, phiên bản và dữ liệu"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Authorization: Bearer <API_KEY chia sẻ>"
+      },
+      "apiKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Header X-API-Key: <API_KEY chia sẻ>"
+      },
+      "apiKeyQuery": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "api-key",
+        "description": "Tham số URL ?api-key=<API_KEY chia sẻ>"
+      },
+      "apiKeyQueryLegacy": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "key",
+        "description": "Tham số URL dự phòng ?key=<API_KEY chia sẻ>"
+      }
+    },
+    "schemas": {
+      "TraCuuChiTietInput": {
+        "type": "object",
+        "required": [
+          "ma_tthc"
+        ],
+        "properties": {
+          "ma_tthc": {
+            "type": "string",
+            "description": "Mã TTHC (ví dụ: \"6.006781\"), ID hệ thống hoặc tên thủ tục",
+            "example": "6.006781"
+          },
+          "phan_muc": {
+            "type": "string",
+            "enum": [
+              "tat_ca",
+              "ho_so",
+              "trinh_tu",
+              "chi_phi",
+              "thoi_han",
+              "can_cu_phap_ly",
+              "yeu_cau_dieu_kien"
+            ],
+            "default": "tat_ca",
+            "description": "Phân mục chi tiết cụ thể cần trích xuất"
+          },
+          "dinh_dang": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "default": "markdown",
+            "description": "Định dạng dữ liệu trả về: \"markdown\" hoặc \"json\""
+          }
+        }
+      },
+      "TimKiemTheoTenInput": {
+        "type": "object",
+        "required": [
+          "ten_tthc"
+        ],
+        "properties": {
+          "ten_tthc": {
+            "type": "string",
+            "description": "Tên thủ tục hoặc từ khóa tìm kiếm (hỗ trợ có dấu và không dấu)",
+            "example": "đăng ký kết hôn"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10,
+            "description": "Số lượng kết quả tối đa mỗi trang (1-50)"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Số trang kết quả cần lấy"
+          }
+        }
+      },
+      "LocTheoCapInput": {
+        "type": "object",
+        "required": [
+          "cap_thuc_hien"
+        ],
+        "properties": {
+          "cap_thuc_hien": {
+            "type": "string",
+            "description": "Cấp thực hiện cần lọc (ví dụ: \"Cấp Bộ\", \"Cấp tỉnh\", \"Cấp xã\", \"Cơ quan khác\")",
+            "example": "Cấp Bộ"
+          },
+          "tu_khoa": {
+            "type": "string",
+            "description": "Từ khóa tìm kiếm bổ sung trong danh sách lọc"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          }
+        }
+      },
+      "LocTheoLinhVucInput": {
+        "type": "object",
+        "required": [
+          "linh_vuc"
+        ],
+        "properties": {
+          "linh_vuc": {
+            "type": "string",
+            "description": "Tên lĩnh vực cần lọc (ví dụ: \"Hộ tịch\", \"Kinh doanh\", \"Xây dựng\", \"Đất đai\", \"Thuế\")",
+            "example": "Hộ tịch"
+          },
+          "tu_khoa": {
+            "type": "string",
+            "description": "Từ khóa tìm kiếm bổ sung trong lĩnh vực"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          }
+        }
+      },
+      "TimKiemTongHopInput": {
+        "type": "object",
+        "properties": {
+          "tu_khoa": {
+            "type": "string",
+            "description": "Từ khóa tên thủ tục hoặc nội dung"
+          },
+          "linh_vuc": {
+            "type": "string",
+            "description": "Lĩnh vực cần lọc"
+          },
+          "cap_thuc_hien": {
+            "type": "string",
+            "description": "Cấp thực hiện cần lọc"
+          },
+          "co_quan": {
+            "type": "string",
+            "description": "Cơ quan thực hiện hoặc ban hành"
+          },
+          "co_thu_phi": {
+            "type": "boolean",
+            "description": "true: có thu phí, false: miễn phí"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          }
+        }
+      },
+      "GoiYThuTucLienQuanInput": {
+        "type": "object",
+        "properties": {
+          "ma_hoac_ten_tthc": {
+            "type": "string",
+            "description": "Mã TTHC hoặc tên thủ tục gốc đang xem xét",
+            "example": "6.006781"
+          },
+          "chu_de": {
+            "type": "string",
+            "description": "Chủ đề đời sống hoặc nghiệp vụ (ví dụ: \"hộ kinh doanh\", \"cư trú\", \"y tế\", \"sinh con\", \"kết hôn\", \"mua bán nhà đất\", \"thành lập doanh nghiệp\")",
+            "example": "hộ kinh doanh"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 6,
+            "description": "Số lượng thủ tục gợi ý tối đa (1-20)"
+          },
+          "dinh_dang": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "default": "markdown",
+            "description": "Định dạng trả về"
+          }
+        }
+      },
+      "ThongTinMcpServerInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "TTHCIndexItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ma_tthc": {
+            "type": "string"
+          },
+          "ten_tthc": {
+            "type": "string"
+          },
+          "cap_thuc_hien": {
+            "type": "string"
+          },
+          "linh_vuc": {
+            "type": "string"
+          },
+          "co_quan_thuc_hien": {
+            "type": "string"
+          },
+          "co_thu_phi": {
+            "type": "boolean"
+          },
+          "chi_tiet_phi": {
+            "type": "string"
+          }
+        }
+      },
+      "RelatedSuggestion": {
+        "type": "object",
+        "properties": {
+          "ma_tthc": {
+            "type": "string"
+          },
+          "ten_tthc": {
+            "type": "string"
+          },
+          "cap_thuc_hien": {
+            "type": "string"
+          },
+          "linh_vuc": {
+            "type": "string"
+          },
+          "co_quan_thuc_hien": {
+            "type": "string"
+          },
+          "ly_do_lien_quan": {
+            "type": "string"
+          },
+          "dvc_url": {
+            "type": "string"
+          }
+        }
+      },
+      "RelatedProceduresResult": {
+        "type": "object",
+        "properties": {
+          "goc": {
+            "type": "object"
+          },
+          "chu_de": {
+            "type": "string"
+          },
+          "tong_so_goi_y": {
+            "type": "integer"
+          },
+          "danh_sach": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelatedSuggestion"
+            }
+          },
+          "markdown": {
+            "type": "string"
+          }
+        }
+      },
+      "SystemStats": {
+        "type": "object",
+        "properties": {
+          "totalRecords": {
+            "type": "integer"
+          },
+          "lastUpdated": {
+            "type": "string"
+          },
+          "capThucHienCounts": {
+            "type": "object"
+          },
+          "linhVucCounts": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

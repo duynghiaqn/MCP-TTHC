@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "tthc-dvcqg-local": {
+      "url": "http://localhost:3000/sse",
+      "headers": {
+        "Authorization": "Bearer YOUR_SECRET_API_KEY"
+      }
+    },
+    "tthc-dvcqg-production": {
+      "url": "https://mcp-tthc.netlify.app/sse",
+      "headers": {
+        "Authorization": "Bearer YOUR_SECRET_API_KEY"
+      }
+    }
+  }
+}
