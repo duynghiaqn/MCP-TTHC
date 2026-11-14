@@ -814,6 +814,19 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       });
       return jsonResponse(result, 200, true);
     }
+
+    // GET / POST /api/tthc/htgq (Kiểm tra Hệ Thống Giải Quyết TTHC & Link nộp hồ sơ trực tuyến)
+    if (subPath === '/htgq') {
+      const id = getParam('id') || getParam('ma_tthc') || getParam('q') || '';
+      const provinceCode = getParam('province_code') || getParam('provinceCode') || getParam('ma_tinh') || undefined;
+      if (!id) {
+        return jsonResponse({ error: 'Thiếu tham số id hoặc ma_tthc' }, 400);
+      }
+      const result = await tthcDataService.checkHTGQ(id, {
+        provinceCode
+      });
+      return jsonResponse(result, 200, true);
+    }
   }
 
   // Fallback 404 cho các đường dẫn không tồn tại

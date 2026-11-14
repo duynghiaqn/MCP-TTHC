@@ -832,6 +832,37 @@
         }
       }
     },
+    "/api/tthc/htgq": {
+      "get": {
+        "operationId": "checkHTGQ",
+        "summary": "Kiểm tra thông tin Hệ thống giải quyết (HTGQ) và tình trạng tiếp nhận trực tuyến của từng TTHC",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mã TTHC (ví dụ: \"1.004884\", \"1.002821\") hoặc UUID formality_id"
+          },
+          {
+            "name": "province_code",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "52"
+            },
+            "description": "Mã tỉnh/thành phố kiểm tra (mặc định: \"52\" cho Gia Lai)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kết quả kiểm tra HTGQ và link nộp hồ sơ trực tuyến"
+          }
+        }
+      }
+    },
     "/api/tthc/stats": {
       "get": {
         "operationId": "getStats",

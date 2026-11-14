@@ -828,7 +828,79 @@ async function runTests() {
   console.assert(detailDvcttText.length > 50, 'Phải trả về nội dung chi tiết TTHC kèm DVCTT');
   console.log('[PASS] tra_cuu_theo_ma_tthc làm giàu dữ liệu DVCTT thành công!\n');
 
-  console.log('[SUCCESS] TẤT CẢ 27 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
+  // TEST 28: Kiểm tra Tool MCP kiem_tra_htgq_tthc (Cơ chế kiểm tra HTGQ trực tuyến & chưa cung cấp)
+  console.log('--- TEST 28: Kiểm tra Tool kiem_tra_htgq_tthc (Cơ chế kiểm tra HTGQ) ---');
+  // Trường hợp 1: TTHC có DVCTT trực tuyến (1.004884)
+  const htgqSuccessReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 281,
+      method: 'tools/call',
+      params: {
+        name: 'kiem_tra_htgq_tthc',
+        arguments: {
+          ma_hoac_id_tthc: '1.004884',
+          province_code: '52',
+          dinh_dang: 'json'
+        }
+      }
+    })
+  });
+  const htgqSuccessRes = await netlifyHandler(htgqSuccessReq, {} as any);
+  console.assert(htgqSuccessRes.status === 200, `kiem_tra_htgq_tthc phải trả về 200, nhận: ${htgqSuccessRes.status}`);
+  const htgqSuccessData = (await htgqSuccessRes.json()) as any;
+  const htgqJsonStr = htgqSuccessData.result?.content?.[0]?.text || '{}';
+  const htgqSuccessObj = JSON.parse(htgqJsonStr);
+  console.assert(htgqSuccessObj.status === 'Đã cung cấp DVCTT', `status phải là 'Đã cung cấp DVCTT', nhận: ${htgqSuccessObj.status}`);
+  console.assert(htgqSuccessObj.has_button === true, 'has_button phải là true');
+  console.assert(Boolean(htgqSuccessObj.loaiHTGQ), 'loaiHTGQ không được rỗng');
+  console.assert(Boolean(htgqSuccessObj.target_dvc_url), 'target_dvc_url không được rỗng');
+  console.log(`[PASS] Case 1: TTHC có DVCTT: ${htgqSuccessObj.status} | Loại: ${htgqSuccessObj.loaiHTGQ} | Mức độ: ${htgqSuccessObj.implement_level}`);
+
+  // Trường hợp 2: TTHC chưa cung cấp DVCTT (5.003972)
+  const htgqNoReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 282,
+      method: 'tools/call',
+      params: {
+        name: 'kiem_tra_htgq_tthc',
+        arguments: {
+          ma_hoac_id_tthc: '5.003972',
+          province_code: '52',
+          dinh_dang: 'json'
+        }
+      }
+    })
+  });
+  const htgqNoRes = await netlifyHandler(htgqNoReq, {} as any);
+  console.assert(htgqNoRes.status === 200, `kiem_tra_htgq_tthc no-dvctt phải trả về 200, nhận: ${htgqNoRes.status}`);
+  const htgqNoData = (await htgqNoRes.json()) as any;
+  const htgqNoObj = JSON.parse(htgqNoData.result?.content?.[0]?.text || '{}');
+  console.assert(htgqNoObj.status === 'Chưa cung cấp', `status phải là 'Chưa cung cấp', nhận: ${htgqNoObj.status}`);
+  console.assert(htgqNoObj.has_button === false, 'has_button phải là false');
+  console.assert(htgqNoObj.implement_level === 'Chưa cung cấp', 'implement_level phải là Chưa cung cấp');
+  console.assert(htgqNoObj.note === 'Không có cơ quan tiếp nhận trực tuyến', `note phải chuẩn, nhận: ${htgqNoObj.note}`);
+  console.log(`[PASS] Case 2: TTHC chưa cung cấp: status=${htgqNoObj.status}, has_button=${htgqNoObj.has_button}, note=${htgqNoObj.note}\n`);
+
+  // TEST 29: Kiểm tra REST API endpoint /api/tthc/htgq
+  console.log('--- TEST 29: Kiểm tra REST API endpoint /api/tthc/htgq ---');
+  const htgqApiReq = new Request('http://localhost:3000/api/tthc/htgq?id=1.004884&province_code=52&api-key=secret_test_key_123', {
+    method: 'GET'
+  });
+  const htgqApiRes = await netlifyHandler(htgqApiReq, {} as any);
+  console.assert(htgqApiRes.status === 200, `REST /api/tthc/htgq phải trả về 200, nhận: ${htgqApiRes.status}`);
+  const htgqApiJson = (await htgqApiRes.json()) as any;
+  console.assert(htgqApiJson.status !== undefined, 'Phải có thuộc tính status trong kết quả HTGQ');
+  console.assert(htgqApiJson.target_dvc_url !== undefined || htgqApiJson.has_button === false, 'Phải có target_dvc_url hoặc has_button');
+  console.assert(Boolean(htgqApiJson.markdown), 'Phải có thuộc tính markdown trong kết quả HTGQ');
+  console.log('[PASS] REST API /api/tthc/htgq thực thi thành công trả về cấu trúc HTGQ chuẩn xác!\n');
+
+  console.log('[SUCCESS] TẤT CẢ 29 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
 }
 
 runTests().catch(err => {

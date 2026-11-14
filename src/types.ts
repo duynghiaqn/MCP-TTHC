@@ -222,4 +222,33 @@ export interface DVCTTResult {
   markdown: string;
 }
 
+export interface HTGQConfig {
+  provinceCode?: string;
+  dvcBaseUrl?: string;
+  limit?: number;
+}
+
+export interface HTGQResult {
+  formality_id: string;
+  formality_code: string;
+  formality_name: string;
+  category_name?: string;
+  department_name?: string;
+  status: 'Đã cung cấp DVCTT' | 'Chưa cung cấp';
+  has_button: boolean;
+  implement_level: string; // 'Toàn trình' | 'Một phần' | 'Chưa cung cấp'
+  implement_cap: string; // 'Cấp xã' | 'Cấp tỉnh' | 'Cấp Bộ' | 'Tỉnh' ...
+  classification: string;
+  loaiHTGQ: 'HTGQ Địa phương' | 'HTGQ Quốc gia' | 'HTGQ Bộ ngành' | '' | string;
+  target_dvc_url?: string;
+  sso_redirect_url?: string;
+  effective_url?: string;
+  url_page: string;
+  total_services: number;
+  note: string;
+  first_row?: DVCTTRow | null;
+  markdown: string;
+}
+
+
 

@@ -176,6 +176,23 @@ export const TraCuuDonViTrucTuyenSchema = z.object({
     )
 });
 
+export const KiemTraHtgqSchema = z.object({
+  ma_hoac_id_tthc: z
+    .string()
+    .min(1, 'Mã TTHC hoặc ID không được để trống')
+    .describe('Mã TTHC (ví dụ: "1.004884", "1.002821", "6.006781") hoặc UUID formality_id'),
+  province_code: z
+    .string()
+    .optional()
+    .default('52')
+    .describe('Mã tỉnh/thành phố kiểm tra (mặc định: "52" cho Gia Lai, "01" cho Hà Nội, "79" cho TP.HCM...)'),
+  dinh_dang: z
+    .enum(['markdown', 'json'])
+    .optional()
+    .default('markdown')
+    .describe('Định dạng kết quả trả về: "markdown" (văn bản đẹp) hoặc "json" (dữ liệu có cấu trúc cho AI agent)')
+});
+
 export const TimKiemTheoTenSchema = z.object({
   ten_tthc: z
     .string()
@@ -937,6 +954,54 @@ export function createTTHCMcpServer(): McpServer {
     'Tra cứu đơn vị tiếp nhận hồ sơ trực tuyến và link nộp DVCTT (alias của tra_cuu_don_vi_tiep_nhan_truc_tuyen).',
     TraCuuDonViTrucTuyenSchema.shape,
     dvcttHandler
+  );
+
+  // TOOL: Kiểm tra Hệ Thống Giải Quyết (HTGQ) của từng TTHC
+  const htgqHandler = async (params: z.infer<typeof KiemTraHtgqSchema>) => {
+    const result = await tthcDataService.checkHTGQ(params.ma_hoac_id_tthc, {
+      provinceCode: params.province_code
+    });
+
+    if (params.dinh_dang === 'json') {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2)
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: result.markdown
+        }
+      ]
+    };
+  };
+
+  server.tool(
+    'kiem_tra_htgq_tthc',
+    'Kiểm tra thông tin Hệ thống giải quyết (HTGQ) và tình trạng dịch vụ công trực tuyến của từng TTHC qua Cổng DVCQG: đã cung cấp DVCTT hay chưa, phân loại HTGQ (Địa phương / Quốc gia / Bộ ngành), mức độ DVCTT (Toàn trình / Một phần), cấp tiếp nhận và sinh link nộp hồ sơ trực tuyến chuẩn xác (kèm tham số MaTTHC, MaCoQuanThucHien, MaDVC, vneid=1 hoặc nop-ho-so DVCQG).',
+    KiemTraHtgqSchema.shape,
+    htgqHandler
+  );
+
+  server.tool(
+    'tra_cuu_htgq_tthc',
+    'Tra cứu Hệ thống giải quyết (HTGQ) và link nộp hồ sơ trực tuyến theo mã TTHC (alias của kiem_tra_htgq_tthc).',
+    KiemTraHtgqSchema.shape,
+    htgqHandler
+  );
+
+  server.tool(
+    'tthc_htgq',
+    'Kiểm tra tình trạng HTGQ TTHC (alias rút gọn của kiem_tra_htgq_tthc).',
+    KiemTraHtgqSchema.shape,
+    htgqHandler
   );
 
   // TOOL 9: `search` chuẩn OpenAI (bắt buộc cho ChatGPT Deep Research / Company Knowledge connectors)
@@ -1889,6 +1954,30 @@ export function getOpenApiSchema(baseUrl = 'https://mcp-tthc.netlify.app') {
           ],
           responses: {
             '200': { description: 'Danh sách đơn vị tiếp nhận hồ sơ trực tuyến và mức độ DVCTT' }
+          }
+        }
+      },
+      '/api/tthc/htgq': {
+        get: {
+          operationId: 'checkHTGQ',
+          summary: 'Kiểm tra thông tin Hệ thống giải quyết (HTGQ) và tình trạng tiếp nhận trực tuyến của từng TTHC',
+          parameters: [
+            {
+              name: 'id',
+              in: 'query',
+              required: true,
+              schema: { type: 'string' },
+              description: 'Mã TTHC (ví dụ: "1.004884", "1.002821") hoặc UUID formality_id'
+            },
+            {
+              name: 'province_code',
+              in: 'query',
+              schema: { type: 'string', default: '52' },
+              description: 'Mã tỉnh/thành phố kiểm tra (mặc định: "52" cho Gia Lai)'
+            }
+          ],
+          responses: {
+            '200': { description: 'Kết quả kiểm tra HTGQ và link nộp hồ sơ trực tuyến' }
           }
         }
       },

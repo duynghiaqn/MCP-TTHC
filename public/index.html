@@ -161,6 +161,7 @@
           <div class="tool-selector-group">
             <label class="input-label" for="select-mcp-tool">Công cụ MCP:</label>
             <select id="select-mcp-tool" class="form-select">
+              <option value="kiem_tra_htgq_tthc" style="font-weight: 600; color: #f59e0b;">kiem_tra_htgq_tthc (Kiểm Tra HTGQ & Link Nộp Hồ Sơ)</option>
               <option value="tra_cuu_don_vi_tiep_nhan_truc_tuyen" style="font-weight: 600; color: #10b981;">tra_cuu_don_vi_tiep_nhan_truc_tuyen (DVCTT & Tiếp Nhận Trực Tuyến)</option>
               <option value="tra_cuu_tthc_gia_lai" style="font-weight: 600; color: #38bdf8;">tra_cuu_tthc_gia_lai (TTHC Tỉnh Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo_gia_lai" style="font-weight: 600; color: #e879f9;">tra_cuu_tthc_noi_bo_gia_lai (TTHC Nội Bộ Gia Lai)</option>
@@ -557,6 +558,34 @@
               </div>
             </div>
 
+            <!-- Tool: kiem_tra_htgq_tthc -->
+            <div class="param-group" id="params-kiem_tra_htgq_tthc" style="display: none;">
+              <label class="input-label" for="input-htgq-id">Mã TTHC hoặc UUID định danh thủ tục (*):</label>
+              <input type="text" id="input-htgq-id" class="form-input" placeholder="Ví dụ: 1.004884 hoặc 019d2bfd-6eac-7598-b88b-15f8a61b366a" value="1.004884">
+              
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-htgq-province">Mã / Tên Tỉnh Thành:</label>
+                  <input type="text" id="input-htgq-province" class="form-input" placeholder="Mặc định: 52 (Gia Lai)" value="52">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-htgq-format">Định dạng kết quả:</label>
+                  <select id="select-htgq-format" class="form-select">
+                    <option value="markdown" selected>Markdown (Thẻ thông tin đẹp)</option>
+                    <option value="json">JSON (Cấu trúc sạch)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Mẫu kiểm tra HTGQ:</span>
+                <button type="button" class="btn-chip" data-fill-htgq-id="1.004884" data-fill-htgq-prov="52">1.004884 (Hộ tịch - Đã có DVCTT)</button>
+                <button type="button" class="btn-chip" data-fill-htgq-id="1.014352" data-fill-htgq-prov="52">1.014352 (Lao động - Đã có DVCTT)</button>
+                <button type="button" class="btn-chip" data-fill-htgq-id="5.003972" data-fill-htgq-prov="52">5.003972 (Nội bộ - Chưa cung cấp)</button>
+                <button type="button" class="btn-chip" data-fill-htgq-id="6.006781" data-fill-htgq-prov="52">6.006781 (Đăng kiểm)</button>
+              </div>
+            </div>
+
             <!-- Pagination options -->
             <div class="pagination-row" id="common-pagination-controls">
               <div class="pagination-field">
@@ -666,7 +695,7 @@
               <i class="bi bi-journal-code"></i> Danh Sách Tools & Schemas MCP
             </h2>
             <p class="section-desc" style="margin-bottom: 0;">
-              Toàn bộ 13 công cụ MCP chuẩn hóa hỗ trợ tra cứu, trích xuất dữ liệu và tích hợp trợ lý AI thông minh:
+              Toàn bộ 14 công cụ MCP chuẩn hóa hỗ trợ tra cứu, trích xuất dữ liệu và tích hợp trợ lý AI thông minh:
             </p>
           </div>
           <a href="/openapi.json" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
@@ -687,7 +716,7 @@
           </div>
           <div class="docs-filter-chips">
             <span class="filter-chip-label"><i class="bi bi-funnel"></i> Phân loại:</span>
-            <button type="button" class="filter-chip active" data-filter="all">Tất cả (13)</button>
+            <button type="button" class="filter-chip active" data-filter="all">Tất cả (14)</button>
             <button type="button" class="filter-chip" data-filter="dvctt">DVCTT Trực Tuyến</button>
             <button type="button" class="filter-chip" data-filter="chuyen_sau">Chuyên sâu</button>
             <button type="button" class="filter-chip" data-filter="tra_cuu">Tra cứu</button>
@@ -699,6 +728,73 @@
         </div>
 
         <div class="tools-grid" id="tools-doc-grid">
+          
+          <!-- TOOL: kiem_tra_htgq_tthc -->
+          <div class="tool-doc-card" data-tool="kiem_tra_htgq_tthc" data-category="dvctt chuyen_sau tra_cuu" style="--card-glow: rgba(245, 158, 11, 0.25); --accent-line: #f59e0b;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.28);">
+                  <i class="bi bi-shield-check"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">kiem_tra_htgq_tthc</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="kiem_tra_htgq_tthc" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tra_cuu_htgq_tthc</span>
+                    <span class="alias-code">tthc_htgq</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);"><i class="bi bi-dot"></i> Kiểm Tra HTGQ</span>
+            </div>
+            <p class="tool-doc-desc">
+              Kiểm tra thông tin Hệ thống giải quyết (HTGQ) và tình trạng dịch vụ công trực tuyến của từng TTHC qua Cổng DVCQG: đã cung cấp DVCTT hay chưa, phân loại HTGQ (Địa phương / Quốc gia / Bộ ngành), mức độ DVCTT (Toàn trình / Một phần), cấp tiếp nhận và tự động sinh link nộp hồ sơ trực tuyến chuẩn xác (kèm tham số MaTTHC, MaCoQuanThucHien, MaDVC, vneid=1 hoặc nop-ho-so DVCQG).
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">3 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">ma_hoac_id_tthc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Mã TTHC (ví dụ: 1.004884, 1.002821, 6.006781) hoặc UUID formality_id.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">province_code</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req default">mặc định: "52"</span>
+                  </div>
+                  <div class="param-desc">Mã tỉnh/thành phố kiểm tra tiếp nhận trực tuyến (mặc định: "52" - Gia Lai).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">dinh_dang</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req default">mặc định: "markdown"</span>
+                  </div>
+                  <div class="param-desc">Định dạng kết quả trả về: "markdown" (thẻ thông tin đẹp) hoặc "json" (dữ liệu sạch cho AI agent).</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-card-footer">
+              <span class="endpoint-hint"><i class="bi bi-hdd-network"></i> GET /api/tthc/htgq</span>
+              <button type="button" class="btn-try-tool" data-goto-tool="kiem_tra_htgq_tthc" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35);">
+                <i class="bi bi-play-circle-fill"></i> Thử ngay
+              </button>
+            </div>
+          </div>
           
           <!-- TOOL: tra_cuu_don_vi_tiep_nhan_truc_tuyen -->
           <div class="tool-doc-card" data-tool="tra_cuu_don_vi_tiep_nhan_truc_tuyen" data-category="dvctt chuyen_sau tra_cuu" style="--card-glow: rgba(16, 185, 129, 0.25); --accent-line: #10b981;">

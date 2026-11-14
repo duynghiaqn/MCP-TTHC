@@ -248,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. Dynamic Tool Parameters Form Switching
   const paramGroups = {
+    kiem_tra_htgq_tthc: document.getElementById('params-kiem_tra_htgq_tthc'),
     tra_cuu_don_vi_tiep_nhan_truc_tuyen: document.getElementById('params-tra_cuu_don_vi_tiep_nhan_truc_tuyen'),
     tra_cuu_tthc_gia_lai: document.getElementById('params-tra_cuu_tthc_gia_lai'),
     tra_cuu_tthc_noi_bo_gia_lai: document.getElementById('params-tra_cuu_tthc_noi_bo_gia_lai'),
@@ -271,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (
+      selected === 'kiem_tra_htgq_tthc' ||
       selected === 'tra_cuu_theo_ma_tthc' ||
       selected === 'goi_y_thu_tuc_lien_quan' ||
       selected === 'thong_tin_mcp_server'
@@ -425,6 +427,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Quick chips cho Kiểm tra HTGQ
+  document.querySelectorAll('.btn-chip[data-fill-htgq-id]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const id = chip.dataset.fillHtgqId;
+      const prov = chip.dataset.fillHtgqProv;
+      const inputId = document.getElementById('input-htgq-id');
+      const inputProv = document.getElementById('input-htgq-province');
+      if (inputId && id !== undefined) inputId.value = id;
+      if (inputProv && prov !== undefined) inputProv.value = prov;
+    });
+  });
+
   // 5. Tool Execution via MCP JSON-RPC
   toolForm.addEventListener('submit', async e => {
     e.preventDefault();
@@ -439,7 +453,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let args = customArgs || {};
     if (!customArgs) {
-      if (
+      if (toolName === 'kiem_tra_htgq_tthc' || toolName === 'tra_cuu_htgq_tthc' || toolName === 'tthc_htgq') {
+        const id = document.getElementById('input-htgq-id')?.value.trim();
+        const prov = document.getElementById('input-htgq-province')?.value.trim();
+        const format = document.getElementById('select-htgq-format')?.value || 'markdown';
+        args = {
+          ma_hoac_id_tthc: id,
+          province_code: prov || '52',
+          dinh_dang: format
+        };
+      } else if (
         toolName === 'tra_cuu_don_vi_tiep_nhan_truc_tuyen' ||
         toolName === 'tra_cuu_dvctt_dia_phuong' ||
         toolName === 'tra_cuu_muc_do_dvctt' ||
