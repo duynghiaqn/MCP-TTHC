@@ -809,88 +809,402 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function formatDetailHtml(markdownText) {
-    const lines = markdownText.split('\n');
+    const rawLines = markdownText.split('\n');
+    let titleText = '';
+    let firstSectionIdx = -1;
+
+    // Tìm dòng section đầu tiên (## hoặc ###) và tiêu đề chính
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i].trim();
+      if (!titleText && line.startsWith('# ')) {
+        titleText = line.slice(2).trim();
+      } else if (line.startsWith('## ') || line.startsWith('### ')) {
+        firstSectionIdx = i;
+        break;
+      }
+    }
+
+    const metaMap = {};
+    const otherMetaLines = [];
+    const metaEndIdx = firstSectionIdx === -1 ? rawLines.length : firstSectionIdx;
+
+    // Bóc tách metadata từ các dòng trước section đầu tiên
+    for (let i = 0; i < metaEndIdx; i++) {
+      const line = rawLines[i].trim();
+      if (!line || line.startsWith('# ')) continue;
+
+      if (line.startsWith('- ')) {
+        const content = line.slice(2).trim();
+        // Bỏ qua ID nội bộ
+        if (
+          content.includes('ID Hệ thống') ||
+          content.includes('ID hệ thống') ||
+          content.startsWith('**ID Hệ thống**') ||
+          content.startsWith('**ID**:') ||
+          content.startsWith('**ID**')
+        ) {
+          continue;
+        }
+
+        const match = content.match(/^\*\*([^*:]+)\*\*:\s*(.*)$/);
+        if (match) {
+          const key = match[1].trim();
+          const val = match[2].trim();
+          metaMap[key] = val;
+        } else {
+          otherMetaLines.push(content);
+        }
+      }
+    }
+
+    // Trích xuất các trường dữ liệu chính từ metaMap
+    const code = metaMap['Mã TTHC'] || metaMap['Mã thủ tục'] || '';
+    const cap = metaMap['Cấp thực hiện'] || '';
+    const linhVuc = metaMap['Lĩnh vực'] || '';
+    const loai = metaMap['Loại thủ tục'] || 'TTHC Tiêu chuẩn';
+    const coQuanThucHien = metaMap['Cơ quan thực hiện'] || '';
+    const coQuanBanHanh = metaMap['Cơ quan ban hành'] || '';
+    const doiTuong = metaMap['Đối tượng thực hiện'] || 'Công dân, Tổ chức';
+    const mucPhi = metaMap['Mức phí'] || metaMap['Phí, lệ phí'] || '';
+    const thoiHan = metaMap['Thời hạn giải quyết'] || '';
+    const soQd = metaMap['Số Quyết định'] || '';
+    const ngayCongKhai = metaMap['Ngày công khai'] || '';
+    const ngayCapNhat = metaMap['Ngày cập nhật'] || '';
+    const ngayDieuChinh = metaMap['Ngày điều chỉnh'] || '';
+    const mucDo = metaMap['Mức độ DVCTT'] || metaMap['Mức độ'] || '';
+    const congTiepNhan = metaMap['Cổng tiếp nhận hồ sơ'] || '';
+    const linkGoc = metaMap['Link TTHC gốc'] || metaMap['Link DVC'] || '';
+
+    // Khởi tạo HTML
     let html = '<div class="detail-view">';
+
+    // 1. Tiêu đề TTHC
+    if (titleText) {
+      html += `
+        <div class="detail-header-block">
+          <h2 class="detail-title"><i class="bi bi-file-earmark-text-fill text-primary"></i> ${escapeHtml(titleText)}</h2>
+        </div>
+      `;
+    }
+
+    // 2. Hero Summary Card (Thu gọn toàn bộ metadata dài dòng)
+    html += '<div class="meta-summary-card">';
+    
+    // Badges Bar: Mã TTHC, Cấp, Lĩnh vực, Mức độ DVCTT, Phí, Loại
+    html += '<div class="meta-badges-bar">';
+    if (code) {
+      html += `<span class="meta-pill meta-pill-code"><i class="bi bi-tag-fill"></i> ${escapeHtml(code)}</span>`;
+    }
+    if (cap) {
+      html += `<span class="meta-pill meta-pill-cap"><i class="bi bi-building"></i> ${escapeHtml(cap)}</span>`;
+    }
+    if (linhVuc) {
+      html += `<span class="meta-pill meta-pill-field"><i class="bi bi-folder-fill"></i> ${escapeHtml(linhVuc)}</span>`;
+    }
+
+    // Pill Mức độ DVCTT
+    if (mucDo) {
+      if (mucDo.includes('Toàn trình')) {
+        html += '<span class="meta-pill meta-pill-dvctt-toan-trinh"><i class="bi bi-check-circle-fill"></i> Toàn trình</span>';
+      } else if (mucDo.includes('Một phần')) {
+        html += '<span class="meta-pill meta-pill-dvctt-mot-phan"><i class="bi bi-lightning-charge-fill"></i> Một phần</span>';
+      } else if (mucDo.includes('Chưa cung cấp') || mucDo.includes('Chưa có')) {
+        html += '<span class="meta-pill meta-pill-dvctt-chua"><i class="bi bi-dash-circle"></i> Chưa có DVCTT</span>';
+      } else {
+        html += `<span class="meta-pill meta-pill-dvctt-chua"><i class="bi bi-globe2"></i> ${escapeHtml(mucDo)}</span>`;
+      }
+    }
+
+    // Pill Mức phí tóm tắt
+    if (mucPhi) {
+      if (mucPhi.toLowerCase().includes('miễn phí') || mucPhi.includes('0 đồng') || mucPhi.includes('Không thu')) {
+        html += '<span class="meta-pill meta-pill-fee" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.35);"><i class="bi bi-cash-stack"></i> Miễn phí</span>';
+      } else if (mucPhi.toLowerCase().includes('có thu phí') || mucPhi.toLowerCase().includes('thu phí') || mucPhi.includes('VNĐ') || mucPhi.includes('đồng')) {
+        html += '<span class="meta-pill meta-pill-fee"><i class="bi bi-cash-coin"></i> Có thu phí</span>';
+      }
+    }
+
+    if (loai) {
+      html += `<span class="meta-pill meta-pill-type"><i class="bi bi-card-checklist"></i> ${escapeHtml(loai)}</span>`;
+    }
+    html += '</div>'; // End meta-badges-bar
+
+    // Grid 4 ô thông tin cốt lõi
+    html += '<div class="meta-summary-grid">';
+    
+    if (coQuanThucHien) {
+      html += `
+        <div class="meta-grid-item">
+          <i class="bi bi-bank meta-item-icon"></i>
+          <div class="meta-item-content">
+            <span class="meta-item-label">Cơ quan thực hiện</span>
+            <span class="meta-item-val">${escapeHtml(coQuanThucHien)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (coQuanBanHanh) {
+      html += `
+        <div class="meta-grid-item">
+          <i class="bi bi-briefcase-fill meta-item-icon" style="color: #60a5fa;"></i>
+          <div class="meta-item-content">
+            <span class="meta-item-label">Cơ quan ban hành</span>
+            <span class="meta-item-val">${escapeHtml(coQuanBanHanh)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (doiTuong) {
+      html += `
+        <div class="meta-grid-item">
+          <i class="bi bi-people-fill meta-item-icon" style="color: #c084fc;"></i>
+          <div class="meta-item-content">
+            <span class="meta-item-label">Đối tượng thực hiện</span>
+            <span class="meta-item-val">${escapeHtml(doiTuong)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (thoiHan) {
+      html += `
+        <div class="meta-grid-item">
+          <i class="bi bi-clock-history meta-item-icon" style="color: #fbbf24;"></i>
+          <div class="meta-item-content">
+            <span class="meta-item-label">Thời hạn giải quyết</span>
+            <span class="meta-item-val">${escapeHtml(thoiHan)}</span>
+          </div>
+        </div>
+      `;
+    } else if (mucPhi) {
+      const shortFee = mucPhi.length > 50 ? mucPhi.slice(0, 48) + '...' : mucPhi;
+      html += `
+        <div class="meta-grid-item">
+          <i class="bi bi-cash-stack meta-item-icon" style="color: #34d399;"></i>
+          <div class="meta-item-content">
+            <span class="meta-item-label">Mức phí sơ bộ</span>
+            <span class="meta-item-val">${escapeHtml(shortFee)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    html += '</div>'; // End meta-summary-grid
+
+    // Collapsible Details (Thu gọn các dòng Quyết định, Mốc thời gian, Chi tiết phí)
+    const hasTimeline = soQd || ngayCongKhai || ngayCapNhat || ngayDieuChinh;
+    if (hasTimeline || (mucPhi && mucPhi.length > 30)) {
+      html += `
+        <details class="meta-collapse-details">
+          <summary class="meta-collapse-summary">
+            <i class="bi bi-info-circle-fill text-primary"></i>
+            <span>Xem thêm số quyết định, mốc thời gian & chi tiết mức phí</span>
+            <i class="bi bi-chevron-down collapse-icon"></i>
+          </summary>
+          <div class="meta-collapse-content">
+            ${soQd ? `<div class="mb-2"><strong>Số Quyết định:</strong> ${escapeHtml(soQd)}</div>` : ''}
+            
+            ${(ngayCongKhai || ngayCapNhat || ngayDieuChinh) ? `
+              <div class="meta-dates-wrap">
+                ${ngayCongKhai ? `<div class="meta-date-col"><div class="meta-date-label">Ngày công khai</div><div class="meta-date-val">${escapeHtml(ngayCongKhai)}</div></div>` : ''}
+                ${ngayCapNhat ? `<div class="meta-date-col"><div class="meta-date-label">Ngày cập nhật</div><div class="meta-date-val">${escapeHtml(ngayCapNhat)}</div></div>` : ''}
+                ${ngayDieuChinh ? `<div class="meta-date-col"><div class="meta-date-label">Ngày điều chỉnh</div><div class="meta-date-val">${escapeHtml(ngayDieuChinh)}</div></div>` : ''}
+              </div>
+            ` : ''}
+
+            ${mucPhi ? `<div class="mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.06);"><strong>Chi tiết mức phí:</strong> ${escapeHtml(mucPhi)}</div>` : ''}
+          </div>
+        </details>
+      `;
+    }
+
+    // Hiển thị banner link trực tuyến nếu có
+    if (congTiepNhan) {
+      const formattedLink = congTiepNhan.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="dvc-direct-link"><i class="bi bi-box-arrow-up-right"></i> $1</a>');
+      html += `
+        <div class="detail-dvc-banner" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.35); margin: 12px 0 0 0;">
+          <i class="bi bi-send-fill" style="color: #10b981;"></i>
+          <div class="dvc-banner-content">
+            <div><strong>Cổng tiếp nhận trực tuyến:</strong> ${formattedLink}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    html += '</div>'; // End meta-summary-card
+
+    // Nếu không có phần sections thì kết thúc luôn
+    if (firstSectionIdx === -1) {
+      html += '</div>';
+      return html;
+    }
+
+    // 3. Quét trước các section để tạo thanh Quick Navigation Chips
+    const sections = [];
+    let currentSec = null;
+
+    for (let i = firstSectionIdx; i < rawLines.length; i++) {
+      const line = rawLines[i].trim();
+      if (line.startsWith('## ') || line.startsWith('### ')) {
+        const isH2 = line.startsWith('## ');
+        const rawTitle = isH2 ? line.slice(3).trim() : line.slice(4).trim();
+        const secId = `detail-sec-${sections.length}`;
+
+        let icon = 'bi-info-circle-fill';
+        let shortName = rawTitle;
+
+        if (rawTitle.includes('Cách thức')) {
+          icon = 'bi-send-fill';
+          shortName = 'Cách thức';
+        } else if (rawTitle.includes('Trình tự')) {
+          icon = 'bi-diagram-3-fill';
+          shortName = 'Trình tự';
+        } else if (rawTitle.includes('Hồ sơ') || rawTitle.includes('hồ sơ')) {
+          icon = 'bi-folder2-open';
+          shortName = 'Hồ sơ';
+        } else if (rawTitle.includes('Thời hạn')) {
+          icon = 'bi-clock-history';
+          shortName = 'Thời hạn';
+        } else if (rawTitle.includes('Phí') || rawTitle.includes('phí')) {
+          icon = 'bi-cash-stack';
+          shortName = 'Phí, lệ phí';
+        } else if (rawTitle.includes('Căn cứ') || rawTitle.includes('pháp lý')) {
+          icon = 'bi-journal-bookmark-fill';
+          shortName = 'Căn cứ pháp lý';
+        } else if (rawTitle.includes('Yêu cầu') || rawTitle.includes('điều kiện')) {
+          icon = 'bi-shield-check';
+          shortName = 'Yêu cầu, ĐK';
+        } else if (rawTitle.includes('Kết quả')) {
+          icon = 'bi-award-fill';
+          shortName = 'Kết quả';
+        } else if (rawTitle.includes('HTGQ') || rawTitle.includes('HỆ THỐNG')) {
+          icon = 'bi-shield-shaded';
+          shortName = 'HTGQ Trực tuyến';
+        }
+
+        currentSec = {
+          id: secId,
+          title: rawTitle,
+          shortName,
+          icon,
+          isH2,
+          stepCount: 0,
+          docCount: 0
+        };
+        sections.push(currentSec);
+      } else if (currentSec) {
+        if (line.startsWith('**Bước ')) {
+          currentSec.stepCount++;
+        } else if (line.startsWith('- ') && currentSec.title.toLowerCase().includes('hồ sơ')) {
+          currentSec.docCount++;
+        }
+      }
+    }
+
+    // Render Quick Nav Chips
+    if (sections.length > 1) {
+      html += '<div class="detail-quick-nav">';
+      sections.forEach(sec => {
+        let countText = '';
+        if (sec.stepCount > 0) countText = ` (${sec.stepCount} bước)`;
+        else if (sec.docCount > 0) countText = ` (${sec.docCount} mục)`;
+
+        html += `
+          <button type="button" class="quick-nav-chip" data-target="${sec.id}">
+            <i class="bi ${sec.icon}"></i> ${escapeHtml(sec.shortName)}${countText}
+          </button>
+        `;
+      });
+      html += '</div>';
+    }
+
+    // 4. Render nội dung từng Section Card (Collapsible)
     let inCard = false;
+    let secCounter = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    for (let i = firstSectionIdx; i < rawLines.length; i++) {
+      const line = rawLines[i].trim();
 
-      if (line.startsWith('# ')) {
-        const titleText = line.slice(2).trim();
-        html += `<div class="detail-header-block"><h2 class="detail-title"><i class="bi bi-file-earmark-text-fill"></i> ${escapeHtml(titleText)}</h2></div>`;
-      } else if (line.startsWith('## ')) {
+      if (line.startsWith('## ') || line.startsWith('### ')) {
         if (inCard) {
           html += '</div></div>';
           inCard = false;
         }
-        const sectionTitle = line.slice(3).trim();
-        let cardClass = 'section-card';
-        let sectionIcon = 'bi-building-check';
-        let accentBorder = '#f59e0b';
-        let accentBg = 'rgba(245, 158, 11, 0.06)';
 
-        if (sectionTitle.includes('HTGQ') || sectionTitle.includes('HỆ THỐNG GIẢI QUYẾT')) {
-          accentBorder = '#10b981';
-          accentBg = 'rgba(16, 185, 129, 0.06)';
-          sectionIcon = 'bi-shield-check';
-        } else if (sectionTitle.includes('LIVE') || sectionTitle.includes('DVCQG')) {
-          accentBorder = '#ef4444';
-          accentBg = 'rgba(239, 68, 68, 0.06)';
-          sectionIcon = 'bi-broadcast';
-        }
+        const secMeta = sections[secCounter] || { id: `detail-sec-${secCounter}` };
+        secCounter++;
 
-        html += `<div class="${cardClass} mt-3" style="border-left: 4px solid ${accentBorder}; background: ${accentBg};"><h3 class="detail-section-title" style="color: ${accentBorder};"><i class="bi ${sectionIcon}"></i> ${escapeHtml(sectionTitle)}</h3><div class="section-card-content">`;
-        inCard = true;
-      } else if (line.startsWith('### ')) {
-        if (inCard) {
-          html += '</div></div>';
-          inCard = false;
-        }
-        const sectionTitle = line.slice(4).trim();
-        let cardClass = 'section-card';
+        const isH2 = line.startsWith('## ');
+        const sectionTitle = isH2 ? line.slice(3).trim() : line.slice(4).trim();
+        let cardClass = 'section-card collapsible';
         let sectionIcon = 'bi-info-circle-fill';
+        let accentBorder = '';
+        let accentBg = '';
 
-        if (sectionTitle.includes('Cách thức thực hiện')) {
+        if (sectionTitle.includes('Cách thức')) {
           cardClass += ' section-card-method';
           sectionIcon = 'bi-send-fill';
-        } else if (sectionTitle.includes('Thời hạn giải quyết')) {
+        } else if (sectionTitle.includes('Thời hạn')) {
           cardClass += ' section-card-time';
           sectionIcon = 'bi-clock-history';
         } else if (sectionTitle.includes('Trình tự')) {
           cardClass += ' section-card-steps';
           sectionIcon = 'bi-diagram-3-fill';
-        } else if (sectionTitle.includes('hồ sơ') || sectionTitle.includes('Hồ sơ')) {
+        } else if (sectionTitle.includes('Hồ sơ') || sectionTitle.includes('hồ sơ')) {
           cardClass += ' section-card-docs';
           sectionIcon = 'bi-folder2-open';
         } else if (sectionTitle.includes('Phí') || sectionTitle.includes('phí')) {
           cardClass += ' section-card-fee';
           sectionIcon = 'bi-cash-stack';
-        } else if (sectionTitle.includes('Yêu cầu') || sectionTitle.includes('điều kiện')) {
-          cardClass += ' section-card-basis';
-          sectionIcon = 'bi-shield-check';
         } else if (sectionTitle.includes('Căn cứ')) {
           cardClass += ' section-card-basis';
           sectionIcon = 'bi-journal-bookmark-fill';
-        } else if (sectionTitle.includes('Mô tả')) {
-          cardClass += ' section-card-desc';
-          sectionIcon = 'bi-card-text';
+        } else if (sectionTitle.includes('Yêu cầu') || sectionTitle.includes('điều kiện')) {
+          cardClass += ' section-card-basis';
+          sectionIcon = 'bi-shield-check';
         } else if (sectionTitle.includes('Kết quả')) {
           cardClass += ' section-card-result';
           sectionIcon = 'bi-award-fill';
+        } else if (sectionTitle.includes('HTGQ') || sectionTitle.includes('HỆ THỐNG')) {
+          accentBorder = '#10b981';
+          accentBg = 'rgba(16, 185, 129, 0.06)';
+          sectionIcon = 'bi-shield-shaded';
         }
 
-        html += `<div class="${cardClass}"><h3 class="detail-section-title"><i class="bi ${sectionIcon}"></i> ${escapeHtml(sectionTitle)}</h3><div class="section-card-content">`;
+        let countBadgeHtml = '';
+        if (secMeta.stepCount > 0) {
+          countBadgeHtml = `<span class="section-card-count-badge">${secMeta.stepCount} bước</span>`;
+        } else if (secMeta.docCount > 0) {
+          countBadgeHtml = `<span class="section-card-count-badge">${secMeta.docCount} tài liệu</span>`;
+        }
+
+        const customStyle = accentBorder ? `style="border-left: 4px solid ${accentBorder}; background: ${accentBg};"` : '';
+        const titleStyle = accentBorder ? `style="color: ${accentBorder};"` : '';
+
+        html += `
+          <div class="${cardClass}" id="${secMeta.id}" ${customStyle}>
+            <div class="section-card-header-toggle">
+              <h3 class="detail-section-title" ${titleStyle}>
+                <i class="bi ${sectionIcon}"></i>
+                <span>${escapeHtml(sectionTitle)}</span>
+                ${countBadgeHtml}
+              </h3>
+              <i class="bi bi-chevron-down toggle-chevron"></i>
+            </div>
+            <div class="section-card-content">
+        `;
         inCard = true;
       } else if (line.startsWith('**Bước ')) {
-        const nextLine = lines[i + 1]?.trim() || '';
+        const nextLine = rawLines[i + 1]?.trim() || '';
         html += `
           <div class="step-item">
             <div class="step-name">${escapeHtml(line.replace(/\*\*/g, ''))}</div>
-            ${nextLine && !nextLine.startsWith('**Bước ') && !nextLine.startsWith('### ') ? `<div class="step-desc">${escapeHtml(nextLine)}</div>` : ''}
+            ${nextLine && !nextLine.startsWith('**Bước ') && !nextLine.startsWith('### ') && !nextLine.startsWith('## ') ? `<div class="step-desc">${escapeHtml(nextLine)}</div>` : ''}
           </div>
         `;
-        if (nextLine && !nextLine.startsWith('**Bước ') && !nextLine.startsWith('### ')) i++;
+        if (nextLine && !nextLine.startsWith('**Bước ') && !nextLine.startsWith('### ') && !nextLine.startsWith('## ')) i++;
       } else if (line.startsWith('#### ')) {
         html += `<h4 class="detail-subsection-title">${escapeHtml(line.slice(5))}</h4>`;
       } else if (line.startsWith('**') && line.endsWith('**')) {
@@ -906,6 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ) {
           continue;
         }
+
         const formatted = content
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
           .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -987,6 +1302,44 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderProcedureDetail(markdownText) {
     viewportRendered.innerHTML = formatDetailHtml(markdownText);
   }
+
+  // Tương tác Collapsible Sections & Quick Nav Chips
+  document.addEventListener('click', (e) => {
+    // 1. Toggle đóng/mở thẻ section card khi click header
+    const toggleHeader = e.target.closest('.section-card-header-toggle');
+    if (toggleHeader) {
+      const card = toggleHeader.closest('.section-card.collapsible');
+      if (card) {
+        card.classList.toggle('collapsed');
+      }
+      return;
+    }
+
+    // 2. Nhảy nhanh tới section khi click Quick Nav Chip
+    const navChip = e.target.closest('.quick-nav-chip');
+    if (navChip) {
+      const targetId = navChip.dataset.target;
+      if (!targetId) return;
+
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        // Nếu section đang bị đóng, tự động mở ra
+        if (targetEl.classList.contains('collapsed')) {
+          targetEl.classList.remove('collapsed');
+        }
+
+        // Đánh dấu active cho chip vừa chọn
+        const parentNav = navChip.closest('.detail-quick-nav');
+        if (parentNav) {
+          parentNav.querySelectorAll('.quick-nav-chip').forEach(c => c.classList.remove('active'));
+          navChip.classList.add('active');
+        }
+
+        // Cuộn mượt tới section
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  });
 
   // Modal open detail
   async function openDetailModal(code) {
