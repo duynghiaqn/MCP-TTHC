@@ -249,8 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. Dynamic Tool Parameters Form Switching
   const paramGroups = {
     lay_thong_tin_tthc_live: document.getElementById('params-lay_thong_tin_tthc_live'),
-    kiem_tra_htgq_tthc: document.getElementById('params-kiem_tra_htgq_tthc'),
-    tra_cuu_don_vi_tiep_nhan_truc_tuyen: document.getElementById('params-tra_cuu_don_vi_tiep_nhan_truc_tuyen'),
     tra_cuu_tthc_gia_lai: document.getElementById('params-tra_cuu_tthc_gia_lai'),
     tra_cuu_tthc_noi_bo_gia_lai: document.getElementById('params-tra_cuu_tthc_noi_bo_gia_lai'),
     tra_cuu_tthc_noi_bo: document.getElementById('params-tra_cuu_tthc_noi_bo'),
@@ -274,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (
       selected === 'lay_thong_tin_tthc_live' ||
-      selected === 'kiem_tra_htgq_tthc' ||
       selected === 'tra_cuu_theo_ma_tthc' ||
       selected === 'goi_y_thu_tuc_lien_quan' ||
       selected === 'thong_tin_mcp_server'
@@ -414,39 +411,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Quick chips cho Tra cứu DVCTT Trực tuyến
-  document.querySelectorAll('.btn-chip[data-fill-dvctt-q]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const q = chip.dataset.fillDvcttQ;
-      const prov = chip.dataset.fillDvcttProv;
-      const lvl = chip.dataset.fillDvcttLvl;
-      const inputQ = document.getElementById('input-dvctt-q');
-      const inputProv = document.getElementById('input-dvctt-province');
-      const selectLvl = document.getElementById('select-dvctt-level');
-      if (inputQ !== null && q !== undefined) inputQ.value = q;
-      if (inputProv !== null && prov !== undefined) inputProv.value = prov;
-      if (selectLvl !== null && lvl !== undefined) selectLvl.value = lvl;
-    });
-  });
-
   // Quick chips cho Lấy thông tin TTHC Live DVCQG
   document.querySelectorAll('.btn-chip[data-fill-live-id]').forEach(chip => {
     chip.addEventListener('click', () => {
       const id = chip.dataset.fillLiveId;
       const inputId = document.getElementById('input-live-id');
       if (inputId && id !== undefined) inputId.value = id;
-    });
-  });
-
-  // Quick chips cho Kiểm tra HTGQ
-  document.querySelectorAll('.btn-chip[data-fill-htgq-id]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const id = chip.dataset.fillHtgqId;
-      const prov = chip.dataset.fillHtgqProv;
-      const inputId = document.getElementById('input-htgq-id');
-      const inputProv = document.getElementById('input-htgq-province');
-      if (inputId && id !== undefined) inputId.value = id;
-      if (inputProv && prov !== undefined) inputProv.value = prov;
     });
   });
 
@@ -471,34 +441,6 @@ document.addEventListener('DOMContentLoaded', () => {
         args = {
           ma_hoac_id_tthc: id,
           phan_muc: phanMuc,
-          dinh_dang: format
-        };
-      } else if (toolName === 'kiem_tra_htgq_tthc' || toolName === 'tra_cuu_htgq_tthc' || toolName === 'tthc_htgq') {
-        const id = document.getElementById('input-htgq-id')?.value.trim();
-        const prov = document.getElementById('input-htgq-province')?.value.trim();
-        const format = document.getElementById('select-htgq-format')?.value || 'markdown';
-        args = {
-          ma_hoac_id_tthc: id,
-          province_code: prov || '52',
-          dinh_dang: format
-        };
-      } else if (
-        toolName === 'tra_cuu_don_vi_tiep_nhan_truc_tuyen' ||
-        toolName === 'tra_cuu_dvctt_dia_phuong' ||
-        toolName === 'tra_cuu_muc_do_dvctt' ||
-        toolName === 'tthc_dvctt_truc_tuyen'
-      ) {
-        const q = document.getElementById('input-dvctt-q')?.value.trim();
-        const prov = document.getElementById('input-dvctt-province')?.value.trim();
-        const lvl = document.getElementById('select-dvctt-level')?.value;
-        const fId = document.getElementById('input-dvctt-formality-id')?.value.trim();
-        const format = document.getElementById('select-dvctt-format')?.value || 'markdown';
-        args = {
-          q: q || undefined,
-          province_code: prov || undefined,
-          implement_level: lvl || 'tat_ca',
-          formality_id: fId || undefined,
-          limit,
           dinh_dang: format
         };
       } else if (toolName === 'tra_cuu_tthc_gia_lai' || toolName === 'tthc_gia_lai') {

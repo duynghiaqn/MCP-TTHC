@@ -761,32 +761,27 @@ async function runTests() {
   console.assert(authCallData.result?.content?.[0]?.text, 'Phải có kết quả thực thi tool');
   console.log('[PASS] tools/call với ?api-key= thực thi thành công trả về dữ liệu chuẩn xác!\n');
 
-  // TEST 25: Kiểm tra Tool MCP tra_cuu_don_vi_tiep_nhan_truc_tuyen
-  console.log('--- TEST 25: Kiểm tra Tool tra_cuu_don_vi_tiep_nhan_truc_tuyen (DVCTT DVCQG API) ---');
-  const dvcttRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+  // TEST 25: Kiểm tra xác nhận đã loại bỏ Tool MCP tra_cuu_don_vi_tiep_nhan_truc_tuyen khỏi tools/list
+  console.log('--- TEST 25: Kiểm tra loại bỏ Tool tra_cuu_don_vi_tiep_nhan_truc_tuyen & kiểm tra backend DVCTT ---');
+  const dvcttListReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 251,
-      method: 'tools/call',
-      params: {
-        name: 'tra_cuu_don_vi_tiep_nhan_truc_tuyen',
-        arguments: {
-          q: '1.004884',
-          province_code: '52',
-          limit: 2,
-          dinh_dang: 'markdown'
-        }
-      }
+      method: 'tools/list',
+      params: {}
     })
   });
-  const dvcttRpcRes = await netlifyHandler(dvcttRpcReq, {} as any);
-  console.assert(dvcttRpcRes.status === 200, `Tool tra_cuu_don_vi_tiep_nhan_truc_tuyen phải trả về 200, nhận: ${dvcttRpcRes.status}`);
-  const dvcttRpcData = (await dvcttRpcRes.json()) as any;
-  const dvcttMd = dvcttRpcData.result?.content?.[0]?.text || '';
-  console.assert(dvcttMd.includes('CƠ QUAN TIẾP NHẬN HỒ SƠ TRỰC TUYẾN') || dvcttMd.includes('DVC'), 'Phải chứa tiêu đề DVCTT');
-  console.log('[PASS] Tool tra_cuu_don_vi_tiep_nhan_truc_tuyen thực thi thành công trả về Markdown chuẩn xác!\n');
+  const dvcttListRes = await netlifyHandler(dvcttListReq, {} as any);
+  const dvcttListData = (await dvcttListRes.json()) as any;
+  const toolNames = (dvcttListData.result?.tools || []).map((t: any) => t.name);
+  console.assert(!toolNames.includes('tra_cuu_don_vi_tiep_nhan_truc_tuyen'), 'tra_cuu_don_vi_tiep_nhan_truc_tuyen không được còn trong tools/list');
+  
+  // Kiểm tra backend DataService vẫn phục vụ chuẩn xác cho REST API và chi tiết TTHC
+  const dvcttBackendRes = await tthcDataService.getDepartmentOnlineSubmission({ q: '1.004884', provinceCode: '52', limit: 2, dinh_dang: 'markdown' });
+  console.assert(dvcttBackendRes.markdown.includes('CƠ QUAN TIẾP NHẬN HỒ SƠ TRỰC TUYẾN') || dvcttBackendRes.markdown.includes('DVC'), 'Phải chứa tiêu đề DVCTT');
+  console.log('[PASS] Đã loại bỏ tool tra_cuu_don_vi_tiep_nhan_truc_tuyen khỏi MCP tools và kiểm thử backend service thành công!\n');
 
   // TEST 26: Kiểm tra REST API endpoint /api/tthc/dvctt
   console.log('--- TEST 26: Kiểm tra REST API endpoint /api/tthc/dvctt ---');
@@ -828,31 +823,14 @@ async function runTests() {
   console.assert(detailDvcttText.length > 50, 'Phải trả về nội dung chi tiết TTHC kèm DVCTT');
   console.log('[PASS] tra_cuu_theo_ma_tthc làm giàu dữ liệu DVCTT thành công!\n');
 
-  // TEST 28: Kiểm tra Tool MCP kiem_tra_htgq_tthc (Cơ chế kiểm tra HTGQ trực tuyến & chưa cung cấp)
-  console.log('--- TEST 28: Kiểm tra Tool kiem_tra_htgq_tthc (Cơ chế kiểm tra HTGQ) ---');
+  // TEST 28: Kiểm tra xác nhận đã loại bỏ Tool MCP kiem_tra_htgq_tthc & kiểm tra backend checkHTGQ
+  console.log('--- TEST 28: Kiểm tra loại bỏ Tool kiem_tra_htgq_tthc & kiểm tra backend checkHTGQ ---');
+  // 1. Kiểm tra kiem_tra_htgq_tthc không còn trong danh sách tool
+  console.assert(!toolNames.includes('kiem_tra_htgq_tthc'), 'kiem_tra_htgq_tthc không được còn trong tools/list');
+
+  // 2. Kiểm tra nghiệp vụ DataService (cho REST API và cho tra_cuu_theo_ma_tthc)
   // Trường hợp 1: TTHC có DVCTT trực tuyến (1.004884)
-  const htgqSuccessReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 281,
-      method: 'tools/call',
-      params: {
-        name: 'kiem_tra_htgq_tthc',
-        arguments: {
-          ma_hoac_id_tthc: '1.004884',
-          province_code: '52',
-          dinh_dang: 'json'
-        }
-      }
-    })
-  });
-  const htgqSuccessRes = await netlifyHandler(htgqSuccessReq, {} as any);
-  console.assert(htgqSuccessRes.status === 200, `kiem_tra_htgq_tthc phải trả về 200, nhận: ${htgqSuccessRes.status}`);
-  const htgqSuccessData = (await htgqSuccessRes.json()) as any;
-  const htgqJsonStr = htgqSuccessData.result?.content?.[0]?.text || '{}';
-  const htgqSuccessObj = JSON.parse(htgqJsonStr);
+  const htgqSuccessObj = await tthcDataService.checkHTGQ('1.004884', { provinceCode: '52' });
   console.assert(htgqSuccessObj.status === 'Đã cung cấp DVCTT', `status phải là 'Đã cung cấp DVCTT', nhận: ${htgqSuccessObj.status}`);
   console.assert(htgqSuccessObj.has_button === true, 'has_button phải là true');
   console.assert(Boolean(htgqSuccessObj.loaiHTGQ), 'loaiHTGQ không được rỗng');
@@ -860,27 +838,7 @@ async function runTests() {
   console.log(`[PASS] Case 1: TTHC có DVCTT: ${htgqSuccessObj.status} | Loại: ${htgqSuccessObj.loaiHTGQ} | Mức độ: ${htgqSuccessObj.implement_level}`);
 
   // Trường hợp 2: TTHC chưa cung cấp DVCTT (5.003972)
-  const htgqNoReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 282,
-      method: 'tools/call',
-      params: {
-        name: 'kiem_tra_htgq_tthc',
-        arguments: {
-          ma_hoac_id_tthc: '5.003972',
-          province_code: '52',
-          dinh_dang: 'json'
-        }
-      }
-    })
-  });
-  const htgqNoRes = await netlifyHandler(htgqNoReq, {} as any);
-  console.assert(htgqNoRes.status === 200, `kiem_tra_htgq_tthc no-dvctt phải trả về 200, nhận: ${htgqNoRes.status}`);
-  const htgqNoData = (await htgqNoRes.json()) as any;
-  const htgqNoObj = JSON.parse(htgqNoData.result?.content?.[0]?.text || '{}');
+  const htgqNoObj = await tthcDataService.checkHTGQ('5.003972', { provinceCode: '52' });
   console.assert(htgqNoObj.status === 'Chưa cung cấp', `status phải là 'Chưa cung cấp', nhận: ${htgqNoObj.status}`);
   console.assert(htgqNoObj.has_button === false, 'has_button phải là false');
   console.assert(htgqNoObj.implement_level === 'Chưa cung cấp', 'implement_level phải là Chưa cung cấp');

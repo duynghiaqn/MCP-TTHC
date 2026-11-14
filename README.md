@@ -234,8 +234,6 @@ flowchart TD
 | **`tra_cuu_tthc_gia_lai`**<br>*(alias: `tthc_gia_lai`)* | `tu_khoa`, `ma_tthc`, `cap_thuc_hien`, `co_quan_thuc_hien`, `linh_vuc`, `chi_tiet`, `limit`, `page`, `dinh_dang` | Tra cứu chi tiết các Thủ tục Hành chính thuộc tỉnh Gia Lai. Cơ quan thực hiện: tỉnh Gia Lai, các TTHC cấp tỉnh, cấp xã, các Sở ngành (Sở Xây dựng, Sở Nông nghiệp và Môi trường...), Văn phòng Đăng ký đất đai và Chi nhánh cấp huyện (Pleiku, Chư Sê, Đak Đoa, An Khê, Ayun Pa, Kbang...), Ban Quản lý Khu kinh tế, Chủ tịch UBND tỉnh Gia Lai... Hỗ trợ xuất chi tiết hồ sơ & các bước. |
 | **`tra_cuu_tthc_noi_bo`**<br>*(alias: `tthc_noi_bo`)* | `tu_khoa`, `ma_tthc`, `co_quan`, `linh_vuc`, `cap_thuc_hien`, `nhom_noi_bo`, `chi_tiet`, `limit`, `page`, `dinh_dang` | Tra cứu chi tiết các Thủ tục Hành chính nội bộ trong hệ thống hành chính nhà nước (theo Nghị định số 385/2026/NĐ-CP của Chính phủ về kiểm soát thủ tục hành chính). Gồm 2 nhóm: TTHC giữa các cơ quan hành chính nhà nước và TTHC nội bộ trong từng cơ quan. Hỗ trợ xuất chi tiết hồ sơ & các bước. |
 | **`tra_cuu_tthc_noi_bo_gia_lai`**<br>*(alias: `tthc_noi_bo_gia_lai`, `tthc_gia_lai_noi_bo`)* | `tu_khoa`, `ma_tthc`, `cap_thuc_hien`, `co_quan`, `linh_vuc`, `nhom_noi_bo`, `chi_tiet`, `limit`, `page`, `dinh_dang` | Tra cứu chuyên sâu các Thủ tục Hành chính Nội bộ thuộc phạm vi tỉnh Gia Lai (cấp tỉnh, cấp xã, UBND tỉnh Gia Lai, Chủ tịch UBND tỉnh, các Sở ban ngành địa phương). Bao gồm TTHC giữa các cơ quan và nội bộ từng cơ quan trên địa bàn Gia Lai theo Nghị định số 385/2026/NĐ-CP. Hỗ trợ xuất chi tiết quy trình & hồ sơ. |
-| **`tra_cuu_don_vi_tiep_nhan_truc_tuyen`**<br>*(alias: `tra_cuu_dvctt`, `tthc_dvctt`)* | `q`, `province_code`, `implement_level`, `limit`, `formality_id`, `formality_case_id`, `department_id`, `ward_code`, `last_id`, `dinh_dang` | Tra cứu cơ quan tiếp nhận trực tuyến theo địa phương & Mã TTHC qua API Cổng Dịch vụ công Quốc gia (`POST /api/v1/submitting/formality/list-department-url-by-citizen`), lấy danh sách cơ quan, mức độ DVCTT (Toàn trình / Một phần), liên kết nộp hồ sơ citizenUrl, cờ thiết yếu isEssential. |
-| **`kiem_tra_htgq_tthc`**<br>*(alias: `tra_cuu_htgq_tthc`, `tthc_htgq`)* | `ma_hoac_id_tthc` *(string, bắt buộc)*<br>`province_code` *(string, tùy chọn: "52")*<br>`dinh_dang` *(enum, tùy chọn: markdown, json)* | Kiểm tra phân loại Hệ thống Giải quyết TTHC (HTGQ) và tính khả dụng tiếp nhận trực tuyến của thủ tục. Tự động chuyển đổi mã/UUID, kiểm tra tiếp nhận trực tuyến; nếu chưa cung cấp thì trả về "Chưa cung cấp", nếu có thì trích xuất liên kết nộp hồ sơ, phân loại nguồn HTGQ (Địa phương / Bộ ngành / Quốc gia), mức độ triển khai (Toàn trình / Một phần) và cấp thực hiện. |
 | **`lay_thong_tin_tthc_live`**<br>*(alias: `tra_cuu_tthc_live`, `tthc_live_dvcqg`)* | `ma_hoac_id_tthc` *(string, bắt buộc)*<br>`phan_muc` *(enum, tùy chọn: tat_ca, trinh_tu, can_cu_phap_ly, thoi_han, ket_qua, yeu_cau_dieu_kien)*<br>`dinh_dang` *(enum, tùy chọn: markdown, json)* | Lấy thông tin TTHC Live thời gian thực trực tiếp từ Cổng Dịch vụ công Quốc gia (`POST /api/v1/configuring/formality/get-formality-by-citizen`). Trích xuất toàn văn tên TTHC, mã TTHC, số quyết định ban hành, cơ quan ban hành, cấp thực hiện, cách thức thực hiện & biểu mức phí/lệ phí, trình tự các bước chi tiết, kết quả thực hiện, yêu cầu điều kiện và toàn bộ danh mục văn bản căn cứ pháp lý. |
 | **`thong_tin_mcp_server`** | *Không yêu cầu* | Trả về thông tin phiên bản máy chủ (`v1.1.0`), tác giả (`Dev by KynChou`), chuẩn giao thức MCP và trạng thái cơ sở dữ liệu quốc gia. |
 
@@ -568,54 +566,6 @@ Mọi tool call đều tuân thủ nghiêm ngặt chuẩn **JSON Schema Draft-07
 }
 ```
 
-### 11. `tra_cuu_don_vi_tiep_nhan_truc_tuyen` *(alias: `tra_cuu_dvctt_dia_phuong`, `tra_cuu_muc_do_dvctt`, `tthc_dvctt_truc_tuyen`)*
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "q": { "type": "string", "description": "Mã TTHC (ví dụ: 1.002821, 1.004884) hoặc từ khóa tìm kiếm (khai sinh, đất đai, hộ chiếu...)" },
-    "province_code": { "type": "string", "default": "52", "description": "Mã tỉnh/thành phố trên DVCQG (52 cho Gia Lai, 01 cho Hà Nội, 79 cho TP.HCM...) hoặc tên tỉnh. Để trống để tra toàn quốc" },
-    "implement_level": { "type": "string", "enum": ["tat_ca", "FULL", "PARTIAL"], "default": "tat_ca", "description": "Mức độ DVCTT: Toàn trình (FULL) hoặc Một phần (PARTIAL)" },
-    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
-    "formality_id": { "type": "string", "description": "UUID định danh thủ tục (formalityId) từ DVCQG" },
-    "last_id": { "type": "string", "description": "Con trỏ phân trang (cursor pagination)" },
-    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
-  },
-  "additionalProperties": false
-}
-```
-
-### 12. `kiem_tra_htgq_tthc` *(alias: `tra_cuu_htgq_tthc`, `tthc_htgq`)*
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "ma_hoac_id_tthc": { "type": "string", "description": "Mã TTHC (ví dụ: 1.004884, 5.003972), UUID định danh thủ tục hoặc tên thủ tục" },
-    "province_code": { "type": "string", "default": "52", "description": "Mã tỉnh/thành phố kiểm tra trên DVCQG (mặc định: 52 cho Gia Lai)" },
-    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
-  },
-  "required": ["ma_hoac_id_tthc"],
-  "additionalProperties": false
-}
-```
-
-### 13. `lay_thong_tin_tthc_live` *(alias: `tra_cuu_tthc_live`, `tthc_live_dvcqg`)*
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "ma_hoac_id_tthc": { "type": "string", "description": "Mã TTHC (ví dụ: 1.004884, 6.006781, 1.116788), UUID định danh hoặc tên TTHC để truy vấn live từ Cổng DVCQG" },
-    "phan_muc": { "type": "string", "enum": ["tat_ca", "trinh_tu", "can_cu_phap_ly", "thoi_han", "ket_qua", "yeu_cau_dieu_kien"], "default": "tat_ca" },
-    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
-  },
-  "required": ["ma_hoac_id_tthc"],
-  "additionalProperties": false
-}
-```
-
 ### 9. `tra_cuu_tthc_noi_bo` *(alias: `tthc_noi_bo`)*
 ```json
 {
@@ -668,40 +618,7 @@ Mọi tool call đều tuân thủ nghiêm ngặt chuẩn **JSON Schema Draft-07
 }
 ```
 
-### 11. `tra_cuu_don_vi_tiep_nhan_truc_tuyen` *(alias: `tra_cuu_dvctt_dia_phuong`, `tra_cuu_muc_do_dvctt`, `tthc_dvctt_truc_tuyen`)*
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "q": { "type": "string", "description": "Mã TTHC (ví dụ: 1.002821, 1.004884) hoặc từ khóa tìm kiếm (khai sinh, đất đai, hộ chiếu...)" },
-    "province_code": { "type": "string", "default": "52", "description": "Mã tỉnh/thành phố trên DVCQG (52 cho Gia Lai, 01 cho Hà Nội, 79 cho TP.HCM...) hoặc tên tỉnh. Để trống để tra toàn quốc" },
-    "implement_level": { "type": "string", "enum": ["tat_ca", "FULL", "PARTIAL"], "default": "tat_ca", "description": "Mức độ DVCTT: Toàn trình (FULL) hoặc Một phần (PARTIAL)" },
-    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
-    "formality_id": { "type": "string", "description": "UUID định danh thủ tục (formalityId) từ DVCQG" },
-    "last_id": { "type": "string", "description": "Con trỏ phân trang (cursor pagination)" },
-    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
-  },
-  "additionalProperties": false
-}
-```
-
-### 12. `kiem_tra_htgq_tthc` *(alias: `tra_cuu_htgq_tthc`, `tthc_htgq`)*
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "ma_hoac_id_tthc": { "type": "string", "description": "Mã TTHC (ví dụ: 1.004884, 5.003972), UUID định danh thủ tục hoặc tên thủ tục" },
-    "province_code": { "type": "string", "default": "52", "description": "Mã tỉnh/thành phố kiểm tra trên DVCQG (mặc định: 52 cho Gia Lai)" },
-    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
-  },
-  "required": ["ma_hoac_id_tthc"],
-  "additionalProperties": false
-}
-```
-
-### 13. `lay_thong_tin_tthc_live` *(alias: `tra_cuu_tthc_live`, `tthc_live_dvcqg`)*
+### 11. `lay_thong_tin_tthc_live` *(alias: `tra_cuu_tthc_live`, `tthc_live_dvcqg`)*
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
