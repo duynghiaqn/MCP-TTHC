@@ -161,6 +161,7 @@
           <div class="tool-selector-group">
             <label class="input-label" for="select-mcp-tool">Công cụ MCP:</label>
             <select id="select-mcp-tool" class="form-select">
+              <option value="tra_cuu_don_vi_tiep_nhan_truc_tuyen" style="font-weight: 600; color: #10b981;">tra_cuu_don_vi_tiep_nhan_truc_tuyen (DVCTT & Tiếp Nhận Trực Tuyến)</option>
               <option value="tra_cuu_tthc_gia_lai" style="font-weight: 600; color: #38bdf8;">tra_cuu_tthc_gia_lai (TTHC Tỉnh Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo_gia_lai" style="font-weight: 600; color: #e879f9;">tra_cuu_tthc_noi_bo_gia_lai (TTHC Nội Bộ Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo" style="font-weight: 600; color: #c084fc;">tra_cuu_tthc_noi_bo (TTHC Nội Bộ)</option>
@@ -512,6 +513,50 @@
               </div>
             </div>
 
+            <!-- Tool: tra_cuu_don_vi_tiep_nhan_truc_tuyen -->
+            <div class="param-group" id="params-tra_cuu_don_vi_tiep_nhan_truc_tuyen" style="display: none;">
+              <label class="input-label" for="input-dvctt-q">Mã TTHC hoặc Từ khóa tìm kiếm (*):</label>
+              <input type="text" id="input-dvctt-q" class="form-input" placeholder="Ví dụ: 1.002821, 1.004884, 1.014352, khai sinh, đất đai..." value="1.004884">
+              
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-dvctt-province">Mã / Tên Tỉnh Thành:</label>
+                  <input type="text" id="input-dvctt-province" class="form-input" placeholder="Ví dụ: 52 (Gia Lai), 01 (Hà Nội), 79 (TP.HCM)..." value="52">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-dvctt-level">Mức độ DVCTT:</label>
+                  <select id="select-dvctt-level" class="form-select">
+                    <option value="tat_ca" selected>Tất cả mức độ</option>
+                    <option value="FULL">Toàn trình (FULL - 100% online)</option>
+                    <option value="PARTIAL">Một phần (PARTIAL)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-dvctt-formality-id">UUID thủ tục (formalityId - tùy chọn):</label>
+                  <input type="text" id="input-dvctt-formality-id" class="form-input" placeholder="019bad30-cd8f-722b-a3c5-d131d484376c (để trống nếu tìm theo q)">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-dvctt-format">Định dạng kết quả:</label>
+                  <select id="select-dvctt-format" class="form-select">
+                    <option value="markdown" selected>Markdown (Bảng đẹp)</option>
+                    <option value="json">JSON (Cấu trúc sạch)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Tra cứu nhanh DVCTT:</span>
+                <button type="button" class="btn-chip" data-fill-dvctt-q="1.004884" data-fill-dvctt-prov="52">1.004884 (Hộ tịch - Gia Lai)</button>
+                <button type="button" class="btn-chip" data-fill-dvctt-q="1.014352" data-fill-dvctt-prov="52">1.014352 (Lao động - Gia Lai)</button>
+                <button type="button" class="btn-chip" data-fill-dvctt-q="khai sinh" data-fill-dvctt-prov="52" data-fill-dvctt-lvl="FULL">Khai sinh Toàn trình (Gia Lai)</button>
+                <button type="button" class="btn-chip" data-fill-dvctt-q="khai sinh" data-fill-dvctt-prov="">Khai sinh (Toàn quốc)</button>
+                <button type="button" class="btn-chip" data-fill-dvctt-q="" data-fill-dvctt-prov="52" data-fill-dvctt-lvl="FULL">Gia Lai Toàn trình (FULL)</button>
+              </div>
+            </div>
+
             <!-- Pagination options -->
             <div class="pagination-row" id="common-pagination-controls">
               <div class="pagination-field">
@@ -621,7 +666,7 @@
               <i class="bi bi-journal-code"></i> Danh Sách Tools & Schemas MCP
             </h2>
             <p class="section-desc" style="margin-bottom: 0;">
-              Toàn bộ 11 công cụ MCP chuẩn hóa hỗ trợ tra cứu, trích xuất dữ liệu và tích hợp trợ lý AI thông minh:
+              Toàn bộ 13 công cụ MCP chuẩn hóa hỗ trợ tra cứu, trích xuất dữ liệu và tích hợp trợ lý AI thông minh:
             </p>
           </div>
           <a href="/openapi.json" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
@@ -642,7 +687,8 @@
           </div>
           <div class="docs-filter-chips">
             <span class="filter-chip-label"><i class="bi bi-funnel"></i> Phân loại:</span>
-            <button type="button" class="filter-chip active" data-filter="all">Tất cả (12)</button>
+            <button type="button" class="filter-chip active" data-filter="all">Tất cả (13)</button>
+            <button type="button" class="filter-chip" data-filter="dvctt">DVCTT Trực Tuyến</button>
             <button type="button" class="filter-chip" data-filter="chuyen_sau">Chuyên sâu</button>
             <button type="button" class="filter-chip" data-filter="tra_cuu">Tra cứu</button>
             <button type="button" class="filter-chip" data-filter="bo_loc">Bộ lọc</button>
@@ -653,6 +699,106 @@
         </div>
 
         <div class="tools-grid" id="tools-doc-grid">
+          
+          <!-- TOOL: tra_cuu_don_vi_tiep_nhan_truc_tuyen -->
+          <div class="tool-doc-card" data-tool="tra_cuu_don_vi_tiep_nhan_truc_tuyen" data-category="dvctt chuyen_sau tra_cuu" style="--card-glow: rgba(16, 185, 129, 0.25); --accent-line: #10b981;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #10b981; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.28);">
+                  <i class="bi bi-cloud-arrow-up-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tra_cuu_don_vi_tiep_nhan_truc_tuyen</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tra_cuu_don_vi_tiep_nhan_truc_tuyen" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tra_cuu_dvctt_dia_phuong</span>
+                    <span class="alias-code">tra_cuu_muc_do_dvctt</span>
+                    <span class="alias-code">tthc_dvctt_truc_tuyen</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);"><i class="bi bi-dot"></i> Live DVCQG API</span>
+            </div>
+            <p class="tool-doc-desc">
+              Tra cứu danh sách cơ quan, đơn vị tiếp nhận hồ sơ trực tuyến và thông tin mức độ Dịch vụ công trực tuyến (Toàn trình FULL / Một phần PARTIAL) tại địa phương trực tiếp từ API Cổng Dịch vụ công Quốc gia (dichvucong.gov.vn). Cung cấp link nộp hồ sơ công dân, UUID formalityId, cờ thủ tục thiết yếu quốc gia và cấp tiếp nhận.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">7 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">q</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Mã TTHC (ví dụ: 1.002821, 1.004884) hoặc từ khóa tìm kiếm (khai sinh, hộ chiếu, đất đai...).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">province_code</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req default">mặc định: "52"</span>
+                  </div>
+                  <div class="param-desc">Mã tỉnh/thành phố trên DVCQG (52 cho Gia Lai, 01 cho Hà Nội, 79 cho TP.HCM...) hoặc tên tỉnh. Để trống để tra toàn quốc.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">implement_level</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req default">mặc định: "tat_ca"</span>
+                  </div>
+                  <div class="param-desc">Mức độ DVCTT: "tat_ca", "FULL" (Toàn trình 100% online), "PARTIAL" (Một phần).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">limit</code>
+                    <span class="param-type">number</span>
+                    <span class="param-req default">mặc định: 10</span>
+                  </div>
+                  <div class="param-desc">Số lượng cơ quan/đơn vị hiển thị trên mỗi lần tra cứu (1-50).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">formality_id</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">UUID định danh thủ tục (formalityId) nếu đã có.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">last_id</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Con trỏ phân trang (cursor ID) từ kết quả trước.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">dinh_dang</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req default">mặc định: "markdown"</span>
+                  </div>
+                  <div class="param-desc">Định dạng trả về: "markdown" (bảng chi tiết đẹp) hoặc "json" (cấu trúc sạch cho AI agent).</div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-card-footer">
+              <span class="endpoint-hint"><i class="bi bi-hdd-network"></i> POST /api/tthc/dvctt</span>
+              <button type="button" class="btn-try-tool" data-goto-tool="tra_cuu_don_vi_tiep_nhan_truc_tuyen" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35);">
+                <i class="bi bi-play-circle-fill"></i> Thử ngay
+              </button>
+            </div>
+          </div>
           
           <!-- TOOL 1: tra_cuu_tthc_gia_lai -->
           <div class="tool-doc-card" data-tool="tra_cuu_tthc_gia_lai" data-category="chuyen_sau" style="--card-glow: rgba(56, 189, 248, 0.25); --accent-line: #38bdf8;">

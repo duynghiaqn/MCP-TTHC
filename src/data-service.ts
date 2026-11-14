@@ -8,8 +8,103 @@ import type {
   RelatedSuggestion,
   RelatedProceduresResult,
   NoiBoSearchParams,
-  NoiBoGiaLaiSearchParams
+  NoiBoGiaLaiSearchParams,
+  DVCTTOptions,
+  DVCTTRow,
+  DVCTTResult
 } from './types.js';
+
+export const PROVINCE_MAP: Record<string, string> = {
+  'hà nội': '01',
+  'ha noi': '01',
+  'tp. hà nội': '01',
+  'hà giang': '02',
+  'cao bằng': '04',
+  'bắc kạn': '06',
+  'tuyên quang': '08',
+  'lào cai': '10',
+  'điện biên': '11',
+  'lai châu': '12',
+  'sơn la': '14',
+  'yên bái': '15',
+  'hòa bình': '17',
+  'thái nguyên': '19',
+  'lạng sơn': '20',
+  'quảng ninh': '22',
+  'bắc giang': '24',
+  'phú thọ': '25',
+  'vĩnh phúc': '26',
+  'bắc ninh': '27',
+  'hải dương': '30',
+  'hải phòng': '31',
+  'hưng yên': '33',
+  'thái bình': '34',
+  'hà nam': '35',
+  'nam định': '36',
+  'ninh bình': '37',
+  'thanh hóa': '38',
+  'nghệ an': '40',
+  'hà tĩnh': '42',
+  'quảng bình': '44',
+  'quảng trị': '45',
+  'thừa thiên huế': '46',
+  'huế': '46',
+  'đà nẵng': '48',
+  'da nang': '48',
+  'quảng nam': '49',
+  'quảng ngãi': '51',
+  'gia lai': '52', // DVCQG gán 52 cho Gia Lai (Pleiku, Đak Đoa, Chư Prông...)
+  'bình định': '52',
+  'kon tum': '62',
+  'đắk lắk': '66',
+  'đắk nông': '67',
+  'lâm đồng': '68',
+  'khánh hòa': '56',
+  'ninh thuận': '58',
+  'bình thuận': '60',
+  'bình phước': '70',
+  'tây ninh': '72',
+  'bình dương': '74',
+  'đồng nai': '75',
+  'bà rịa - vũng tàu': '77',
+  'vũng tàu': '77',
+  'hồ chí minh': '79',
+  'tp. hồ chí minh': '79',
+  'tp.hcm': '79',
+  'tphcm': '79',
+  'sài gòn': '79',
+  'long an': '80',
+  'tiền giang': '82',
+  'bến tre': '83',
+  'trà vinh': '84',
+  'vĩnh long': '86',
+  'đồng tháp': '87',
+  'an giang': '89',
+  'kiên giang': '91',
+  'cần thơ': '92',
+  'hậu giang': '93',
+  'sóc trăng': '94',
+  'bạc liêu': '95',
+  'cà mau': '96'
+};
+
+export function resolveProvinceCode(input?: string): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return trimmed.padStart(2, '0');
+  }
+  const normalized = trimmed.toLowerCase();
+  if (PROVINCE_MAP[normalized]) {
+    return PROVINCE_MAP[normalized];
+  }
+  for (const [name, code] of Object.entries(PROVINCE_MAP)) {
+    if (normalized.includes(name) || name.includes(normalized)) {
+      return code;
+    }
+  }
+  return trimmed;
+}
 
 // Tự động gán biến môi trường mặc định nếu chưa được cấu hình, đảm bảo không bao giờ bị lỗi "Biến môi trường INDEX_URL chưa được cấu hình"
 if (!process.env.INDEX_URL && !process.env.TTHC_INDEX_URL) {
@@ -131,6 +226,8 @@ class TTHCDataService {
   private idMap = new Map<string, TTHCIndexItem>();
   private codeMap = new Map<string, TTHCIndexItem>();
   private detailCache = new Map<string, { data: TTHCDetail; timestamp: number }>();
+  private dvcttCache = new Map<string, { data: DVCTTResult; timestamp: number }>();
+  private readonly DVCTT_CACHE_TTL_MS = 5 * 60 * 1000;
   private versionInfo: TTHCVersion | null = null;
   private lastIndexFetchTime = 0;
   private lastVersionCheckTime = 0;
@@ -407,6 +504,8 @@ class TTHCDataService {
     options?: {
       phan_muc?: DetailSection;
       dinh_dang?: 'markdown' | 'json';
+      tra_cuu_dvctt?: boolean;
+      province_code?: string;
     }
   ): Promise<{
     indexItem: TTHCIndexItem | null;
@@ -540,12 +639,33 @@ class TTHCDataService {
     };
 
     const md = this.formatDetailMarkdown(detailData, indexItem || undefined, phanMuc);
+    let finalMd = md;
+    let finalJson: any = structuredJson;
+
+    if (options?.tra_cuu_dvctt || options?.province_code) {
+      try {
+        const dvctt = await this.getDepartmentOnlineSubmission({
+          q: indexItem?.ma_tthc || detailData.code || identifier,
+          provinceCode: options.province_code || '52',
+          limit: 5
+        });
+        if (dvctt.rows.length > 0) {
+          finalMd += '\n\n' + dvctt.markdown;
+          if (typeof finalJson === 'object' && finalJson !== null) {
+            finalJson.tiep_nhan_truc_tuyen = dvctt;
+          }
+        }
+      } catch (e) {
+        console.warn('[TTHC DataService] Không thể tải thông tin DVCTT đính kèm:', e);
+      }
+    }
+
     return {
       indexItem,
       detail: detailData,
       sections,
-      markdown: md,
-      jsonData: structuredJson
+      markdown: finalMd,
+      jsonData: finalJson
     };
   }
 
@@ -2239,6 +2359,208 @@ class TTHCDataService {
       ...paginated,
       markdown: lines.join('\n')
     };
+  }
+
+  /**
+   * Tra cứu cơ quan/đơn vị đang mở tiếp nhận hồ sơ trực tuyến và mức độ DVCTT (Toàn trình / Một phần)
+   * từ Cổng Dịch vụ công Quốc gia (dichvucong.gov.vn) theo địa phương và mã/từ khóa TTHC.
+   */
+  async getDepartmentOnlineSubmission(options: DVCTTOptions): Promise<DVCTTResult> {
+    const q = options.q?.trim() || '';
+    const formalityId = options.formalityId?.trim() || '';
+    const formalityCaseId = options.formalityCaseId?.trim() || '';
+    const departmentId = options.departmentId?.trim() || '';
+    const departmentParentId = options.departmentParentId?.trim() || '';
+    const limit = Math.max(1, Math.min(50, options.limit || 10));
+    const lastId = options.lastId?.trim() || '';
+    const rawImplementLevel = options.implementLevel || '';
+    const implementLevel = (rawImplementLevel === 'tat_ca' ? '' : rawImplementLevel).toUpperCase();
+    const wardCode = options.wardCode?.trim() || '';
+    const rawProvince = (options.provinceCode || '').trim();
+    const provinceCode = rawProvince === 'tat_ca' || rawProvince === 'all' ? '' : resolveProvinceCode(rawProvince);
+
+    const cacheKey = JSON.stringify({
+      q,
+      formalityId,
+      formalityCaseId,
+      departmentId,
+      departmentParentId,
+      limit,
+      lastId,
+      implementLevel,
+      provinceCode,
+      wardCode
+    });
+
+    const cached = this.dvcttCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.DVCTT_CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    const endpoint = 'https://dichvucong.gov.vn/api/v1/submitting/formality/list-department-url-by-citizen';
+    const payload = {
+      formalityId,
+      formalityCaseId,
+      departmentId,
+      departmentParentId,
+      limit,
+      lastId,
+      q,
+      implementLevel,
+      formalityTargetType: options.formalityTargetType || '',
+      provinceCode,
+      wardCode
+    };
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Accept': 'application/json, text/plain, */*',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000)
+      });
+
+      if (!res.ok) {
+        throw new Error(`DVCQG API trả về HTTP status ${res.status}`);
+      }
+
+      const json = (await res.json()) as {
+        code: string;
+        data?: {
+          rows: any[];
+          lastId: string;
+          total: number;
+        };
+        message?: string;
+      };
+
+      const rows: DVCTTRow[] = (json.data?.rows || []).map((r: any) => ({
+        id: r.id || '',
+        formalityId: r.formalityId || '',
+        formalityCode: r.formalityCode || '',
+        formalityCaseId: r.formalityCaseId || '',
+        formalityCaseName: r.formalityCaseName || '',
+        formalityCaseCode: r.formalityCaseCode || '',
+        departmentId: r.departmentId || '',
+        departmentName: r.departmentName || '',
+        departmentCode: r.departmentCode || '',
+        departmentLevel: r.departmentLevel || '',
+        departmentType: r.departmentType || '',
+        implementLevel: r.implementLevel || '',
+        citizenUrl: r.citizenUrl ? (r.citizenUrl.startsWith('http') ? r.citizenUrl : `https://${r.citizenUrl}`) : '',
+        employeeUrl: r.employeeUrl || '',
+        isEssential: !!r.isEssential,
+        categoryInfo: r.categoryInfo || []
+      }));
+
+      const total = json.data?.total !== undefined ? json.data.total : rows.length;
+      const nextLastId = json.data?.lastId || '';
+
+      // Xây dựng văn bản Markdown
+      const lines: string[] = [];
+      lines.push('# CƠ QUAN TIẾP NHẬN HỒ SƠ TRỰC TUYẾN & MỨC ĐỘ DVCTT (CỔNG DVC QUỐC GIA)');
+      lines.push('*Dữ liệu tiếp nhận hồ sơ trực tuyến theo thời gian thực từ Cổng Dịch vụ công Quốc gia (dichvucong.gov.vn)*');
+
+      const criteriaList: string[] = [];
+      if (q) criteriaList.push(`Từ khóa/Mã: \`${q}\``);
+      if (provinceCode) {
+        const provName = rawProvince && rawProvince !== provinceCode ? `${rawProvince} (${provinceCode})` : provinceCode;
+        criteriaList.push(`Tỉnh/Thành: \`${provName}\``);
+      }
+      if (implementLevel) {
+        criteriaList.push(`Mức độ: \`${implementLevel === 'FULL' ? 'Toàn trình (FULL)' : 'Một phần (PARTIAL)'}\``);
+      }
+      if (wardCode) criteriaList.push(`Xã/Phường: \`${wardCode}\``);
+      if (criteriaList.length > 0) {
+        lines.push(`> Tiêu chí tra cứu: **${criteriaList.join(' | ')}**`);
+      }
+      lines.push(`> Tìm thấy **${total.toLocaleString('vi-VN')}** cơ quan/đơn vị đang tiếp nhận trực tuyến (Hiển thị **${rows.length}** mục)\n`);
+
+      if (rows.length === 0) {
+        lines.push('Hiện tại không tìm thấy đơn vị nào mở tiếp nhận hồ sơ trực tuyến phù hợp với tiêu chí tra cứu.');
+        lines.push('- Nếu bạn tra cứu theo địa phương, hãy kiểm tra lại mã tỉnh/thành phố hoặc từ khóa/mã TTHC.');
+        lines.push('- Một số thủ tục có thể chỉ tiếp nhận hồ sơ giấy trực tiếp tại Bộ phận Một cửa hoặc nộp qua bưu chính công ích.');
+      } else {
+        lines.push('| STT | Cơ quan / Đơn vị tiếp nhận | Cấp đơn vị | Mức độ DVCTT | Trực tuyến DVCQG | Link nộp hồ sơ trực tuyến |');
+        lines.push('|:---:|:---|:---:|:---:|:---:|:---|');
+
+        for (let i = 0; i < rows.length; i++) {
+          const item = rows[i];
+          const levelBadge = item.implementLevel === 'FULL'
+            ? '🟢 **Toàn trình** (FULL)'
+            : item.implementLevel === 'PARTIAL'
+            ? '🟡 **Một phần** (PARTIAL)'
+            : (item.implementLevel || 'Chưa rõ');
+
+          const essentialBadge = item.isEssential ? '⭐ Thiết yếu DVCQG' : 'Thông thường';
+          const linkMd = item.citizenUrl
+            ? `[👉 Nộp trực tuyến](${item.citizenUrl})`
+            : '*Chưa có link nộp*';
+
+          const capText = item.departmentLevel === 'COMMUNE'
+            ? 'Cấp xã'
+            : item.departmentLevel === 'DISTRICT'
+            ? 'Cấp huyện'
+            : item.departmentLevel === 'PROVINCE'
+            ? 'Cấp tỉnh'
+            : item.departmentLevel === 'MINISTRY'
+            ? 'Cấp Bộ'
+            : (item.departmentLevel || 'Khác');
+
+          lines.push(`| ${i + 1} | **${item.departmentName || 'Chưa rõ'}**<br><small style="color:#64748b;">Mã CQ: \`${item.departmentCode || 'N/A'}\`</small> | ${capText} | ${levelBadge} | ${essentialBadge} | ${linkMd} |`);
+        }
+
+        lines.push('\n### 📋 Danh sách chi tiết các trường hợp thủ tục & Cổng nộp trực tuyến:');
+        for (let i = 0; i < rows.length; i++) {
+          const item = rows[i];
+          lines.push(`#### ${i + 1}. ${item.formalityCaseName || item.departmentName}`);
+          lines.push(`- **Cơ quan tiếp nhận**: **${item.departmentName}** (Cấp: ${item.departmentLevel || 'N/A'})`);
+          if (item.formalityCode) lines.push(`- **Mã TTHC**: \`${item.formalityCode}\`${item.formalityCaseCode ? ` (Trường hợp: \`${item.formalityCaseCode}\`)` : ''}`);
+          lines.push(`- **Mức độ DVCTT**: ${item.implementLevel === 'FULL' ? '🟢 Toàn trình (100% nộp hồ sơ & trả kết quả trực tuyến)' : '🟡 Một phần (Có bước nộp trực tuyến hoặc trả kết quả trực tiếp)'}`);
+          lines.push(`- **Thủ tục thiết yếu**: ${item.isEssential ? '⭐ CÓ (Thủ tục thiết yếu quốc gia)' : 'Không'}`);
+          if (item.formalityId) lines.push(`- **UUID Thủ tục (formalityId)**: \`${item.formalityId}\``);
+          if (item.citizenUrl) lines.push(`- **Cổng nộp hồ sơ công dân**: [${item.citizenUrl}](${item.citizenUrl})`);
+          lines.push('');
+        }
+
+        if (nextLastId && total > rows.length) {
+          lines.push(`---\n*Gợi ý: Còn **${total - rows.length}** đơn vị khác. Bạn có thể gọi lại tool với \`last_id: "${nextLastId}"\` để xem tiếp trang kế tiếp.*`);
+        }
+      }
+
+      const result: DVCTTResult = {
+        total,
+        lastId: nextLastId,
+        provinceCode,
+        provinceName: rawProvince,
+        q,
+        implementLevel,
+        rows,
+        markdown: lines.join('\n')
+      };
+
+      this.dvcttCache.set(cacheKey, { data: result, timestamp: Date.now() });
+      return result;
+    } catch (error: any) {
+      console.error('[TTHC DataService] Lỗi khi gọi API DVCQG list-department-url-by-citizen:', error);
+      const fallbackLines: string[] = [
+        '# CƠ QUAN TIẾP NHẬN HỒ SƠ TRỰC TUYẾN & MỨC ĐỘ DVCTT (CỔNG DVC QUỐC GIA)',
+        `> ⚠️ **Không thể kết nối đến Cổng Dịch vụ công Quốc gia**: ${error?.message || 'Lỗi kết nối mạng hoặc máy chủ bận'}.`,
+        '',
+        'Vui lòng thử lại sau ít phút hoặc tra cứu thông tin tĩnh trong CSDL TTHC bằng tool `tra_cuu_theo_ma_tthc`.'
+      ];
+      return {
+        total: 0,
+        q,
+        provinceCode,
+        rows: [],
+        markdown: fallbackLines.join('\n')
+      };
+    }
   }
 }
 

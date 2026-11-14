@@ -248,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. Dynamic Tool Parameters Form Switching
   const paramGroups = {
+    tra_cuu_don_vi_tiep_nhan_truc_tuyen: document.getElementById('params-tra_cuu_don_vi_tiep_nhan_truc_tuyen'),
     tra_cuu_tthc_gia_lai: document.getElementById('params-tra_cuu_tthc_gia_lai'),
     tra_cuu_tthc_noi_bo_gia_lai: document.getElementById('params-tra_cuu_tthc_noi_bo_gia_lai'),
     tra_cuu_tthc_noi_bo: document.getElementById('params-tra_cuu_tthc_noi_bo'),
@@ -409,6 +410,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Quick chips cho Tra cứu DVCTT Trực tuyến
+  document.querySelectorAll('.btn-chip[data-fill-dvctt-q]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const q = chip.dataset.fillDvcttQ;
+      const prov = chip.dataset.fillDvcttProv;
+      const lvl = chip.dataset.fillDvcttLvl;
+      const inputQ = document.getElementById('input-dvctt-q');
+      const inputProv = document.getElementById('input-dvctt-province');
+      const selectLvl = document.getElementById('select-dvctt-level');
+      if (inputQ !== null && q !== undefined) inputQ.value = q;
+      if (inputProv !== null && prov !== undefined) inputProv.value = prov;
+      if (selectLvl !== null && lvl !== undefined) selectLvl.value = lvl;
+    });
+  });
+
   // 5. Tool Execution via MCP JSON-RPC
   toolForm.addEventListener('submit', async e => {
     e.preventDefault();
@@ -423,7 +439,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let args = customArgs || {};
     if (!customArgs) {
-      if (toolName === 'tra_cuu_tthc_gia_lai' || toolName === 'tthc_gia_lai') {
+      if (
+        toolName === 'tra_cuu_don_vi_tiep_nhan_truc_tuyen' ||
+        toolName === 'tra_cuu_dvctt_dia_phuong' ||
+        toolName === 'tra_cuu_muc_do_dvctt' ||
+        toolName === 'tthc_dvctt_truc_tuyen'
+      ) {
+        const q = document.getElementById('input-dvctt-q')?.value.trim();
+        const prov = document.getElementById('input-dvctt-province')?.value.trim();
+        const lvl = document.getElementById('select-dvctt-level')?.value;
+        const fId = document.getElementById('input-dvctt-formality-id')?.value.trim();
+        const format = document.getElementById('select-dvctt-format')?.value || 'markdown';
+        args = {
+          q: q || undefined,
+          province_code: prov || undefined,
+          implement_level: lvl || 'tat_ca',
+          formality_id: fId || undefined,
+          limit,
+          dinh_dang: format
+        };
+      } else if (toolName === 'tra_cuu_tthc_gia_lai' || toolName === 'tthc_gia_lai') {
         const kw = document.getElementById('input-gialai-keyword')?.value.trim();
         const code = document.getElementById('input-gialai-code')?.value.trim();
         const cap = document.getElementById('select-gialai-cap')?.value;

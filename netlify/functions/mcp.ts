@@ -784,6 +784,36 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       });
       return jsonResponse(result, 200, true);
     }
+
+    // GET / POST /api/tthc/dvctt hoặc /api/tthc/don-vi-truc-tuyen (Tra cứu đơn vị tiếp nhận trực tuyến & Mức độ DVCTT từ Cổng DVCQG)
+    if (subPath === '/dvctt' || subPath === '/don-vi-truc-tuyen' || subPath === '/donvitructuyen') {
+      const q = getParam('q') || getParam('tu_khoa') || getParam('ma_tthc') || undefined;
+      const provinceCode = getParam('province_code') || getParam('provinceCode') || getParam('ma_tinh') || undefined;
+      const implementLevel = getParam('implement_level') || getParam('implementLevel') || getParam('muc_do') || undefined;
+      const limit = parseInt(getParam('limit') || '10', 10);
+      const lastId = getParam('last_id') || getParam('lastId') || undefined;
+      const formalityId = getParam('formality_id') || getParam('formalityId') || undefined;
+      const formalityCaseId = getParam('formality_case_id') || getParam('formalityCaseId') || undefined;
+      const departmentId = getParam('department_id') || getParam('departmentId') || undefined;
+      const departmentParentId = getParam('department_parent_id') || getParam('departmentParentId') || undefined;
+      const wardCode = getParam('ward_code') || getParam('wardCode') || undefined;
+      const dinh_dang = (getParam('dinh_dang') || 'markdown') as 'markdown' | 'json';
+
+      const result = await tthcDataService.getDepartmentOnlineSubmission({
+        q,
+        provinceCode,
+        implementLevel,
+        limit,
+        lastId,
+        formalityId,
+        formalityCaseId,
+        departmentId,
+        departmentParentId,
+        wardCode,
+        dinh_dang
+      });
+      return jsonResponse(result, 200, true);
+    }
   }
 
   // Fallback 404 cho các đường dẫn không tồn tại

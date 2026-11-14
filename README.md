@@ -9,7 +9,7 @@
 [![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05-blue.svg)](https://modelcontextprotocol.io)
 [![OpenAPI 3.1.0](https://img.shields.io/badge/OpenAPI-3.1.0-brightgreen.svg)](https://www.openapis.org/)
 [![OpenAI Plugins](https://img.shields.io/badge/OpenAI%20Plugins-Compatible-purple.svg)](https://developers.openai.com/plugins)
-[![Tests](https://img.shields.io/badge/Test%20Suite-17%2F17%20PASS%20(100%25)-success.svg)](#kiểm-thử-hệ-thống)
+[![Tests](https://img.shields.io/badge/Test%20Suite-27%2F27%20PASS%20(100%25)-success.svg)](#kiểm-thử-hệ-thống)
 [![Netlify Deploy Ready](https://img.shields.io/badge/Netlify-Serverless%20Ready-00C7B7.svg)](https://www.netlify.com)
 
 Ứng dụng **MCP (Model Context Protocol) Server** chuyên dụng phục vụ tra cứu toàn diện cơ sở dữ liệu **Thủ tục Hành chính (TTHC) Việt Nam**, được thiết kế tối ưu cho nền tảng serverless **Netlify Functions** cũng như Node.js Container/Server độc lập. 
@@ -544,6 +544,45 @@ Mọi tool call đều tuân thủ nghiêm ngặt chuẩn **JSON Schema Draft-07
 }
 ```
 
+### 10. `tra_cuu_tthc_noi_bo_gia_lai` *(alias: `tthc_noi_bo_gia_lai`, `tthc_gia_lai_noi_bo`)*
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "tu_khoa": { "type": "string", "description": "Từ khóa tìm kiếm TTHC nội bộ tỉnh Gia Lai" },
+    "ma_tthc": { "type": "string", "description": "Mã TTHC nội bộ Gia Lai cụ thể" },
+    "co_quan": { "type": "string", "description": "Cơ quan thực hiện (UBND tỉnh, Sở TN&MT, Sở Nông nghiệp...)" },
+    "linh_vuc": { "type": "string", "description": "Lĩnh vực nghiệp vụ nội bộ" },
+    "cap_thuc_hien": { "type": "string", "enum": ["tat_ca", "cap_tinh", "cap_xa"], "default": "tat_ca" },
+    "nhom_noi_bo": { "type": "string", "enum": ["tat_ca", "giua_cac_co_quan", "trong_noi_bo"], "default": "tat_ca" },
+    "chi_tiet": { "type": "boolean", "default": false },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+    "page": { "type": "integer", "minimum": 1, "default": 1 },
+    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
+  },
+  "additionalProperties": false
+}
+```
+
+### 11. `tra_cuu_don_vi_tiep_nhan_truc_tuyen` *(alias: `tra_cuu_dvctt_dia_phuong`, `tra_cuu_muc_do_dvctt`, `tthc_dvctt_truc_tuyen`)*
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "q": { "type": "string", "description": "Mã TTHC (ví dụ: 1.002821, 1.004884) hoặc từ khóa tìm kiếm (khai sinh, đất đai, hộ chiếu...)" },
+    "province_code": { "type": "string", "default": "52", "description": "Mã tỉnh/thành phố trên DVCQG (52 cho Gia Lai, 01 cho Hà Nội, 79 cho TP.HCM...) hoặc tên tỉnh. Để trống để tra toàn quốc" },
+    "implement_level": { "type": "string", "enum": ["tat_ca", "FULL", "PARTIAL"], "default": "tat_ca", "description": "Mức độ DVCTT: Toàn trình (FULL) hoặc Một phần (PARTIAL)" },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+    "formality_id": { "type": "string", "description": "UUID định danh thủ tục (formalityId) từ DVCQG" },
+    "last_id": { "type": "string", "description": "Con trỏ phân trang (cursor pagination)" },
+    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
+  },
+  "additionalProperties": false
+}
+```
+
 ### 9. `tra_cuu_tthc_noi_bo` *(alias: `tthc_noi_bo`)*
 ```json
 {
@@ -569,6 +608,45 @@ Mọi tool call đều tuân thủ nghiêm ngặt chuẩn **JSON Schema Draft-07
     "chi_tiet": { "type": "boolean", "default": false, "description": "true: trích xuất toàn bộ hồ sơ, các bước quy trình, phí, căn cứ pháp lý" },
     "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
     "page": { "type": "integer", "minimum": 1, "default": 1 },
+    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
+  },
+  "additionalProperties": false
+}
+```
+
+### 10. `tra_cuu_tthc_noi_bo_gia_lai` *(alias: `tthc_noi_bo_gia_lai`, `tthc_gia_lai_noi_bo`)*
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "tu_khoa": { "type": "string", "description": "Từ khóa tìm kiếm TTHC nội bộ tỉnh Gia Lai" },
+    "ma_tthc": { "type": "string", "description": "Mã TTHC nội bộ Gia Lai cụ thể" },
+    "co_quan": { "type": "string", "description": "Cơ quan thực hiện (UBND tỉnh, Sở TN&MT, Sở Nông nghiệp...)" },
+    "linh_vuc": { "type": "string", "description": "Lĩnh vực nghiệp vụ nội bộ" },
+    "cap_thuc_hien": { "type": "string", "enum": ["tat_ca", "cap_tinh", "cap_xa"], "default": "tat_ca" },
+    "nhom_noi_bo": { "type": "string", "enum": ["tat_ca", "giua_cac_co_quan", "trong_noi_bo"], "default": "tat_ca" },
+    "chi_tiet": { "type": "boolean", "default": false },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+    "page": { "type": "integer", "minimum": 1, "default": 1 },
+    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
+  },
+  "additionalProperties": false
+}
+```
+
+### 11. `tra_cuu_don_vi_tiep_nhan_truc_tuyen` *(alias: `tra_cuu_dvctt_dia_phuong`, `tra_cuu_muc_do_dvctt`, `tthc_dvctt_truc_tuyen`)*
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "q": { "type": "string", "description": "Mã TTHC (ví dụ: 1.002821, 1.004884) hoặc từ khóa tìm kiếm (khai sinh, đất đai, hộ chiếu...)" },
+    "province_code": { "type": "string", "default": "52", "description": "Mã tỉnh/thành phố trên DVCQG (52 cho Gia Lai, 01 cho Hà Nội, 79 cho TP.HCM...) hoặc tên tỉnh. Để trống để tra toàn quốc" },
+    "implement_level": { "type": "string", "enum": ["tat_ca", "FULL", "PARTIAL"], "default": "tat_ca", "description": "Mức độ DVCTT: Toàn trình (FULL) hoặc Một phần (PARTIAL)" },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+    "formality_id": { "type": "string", "description": "UUID định danh thủ tục (formalityId) từ DVCQG" },
+    "last_id": { "type": "string", "description": "Con trỏ phân trang (cursor pagination)" },
     "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
   },
   "additionalProperties": false

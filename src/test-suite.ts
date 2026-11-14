@@ -761,7 +761,74 @@ async function runTests() {
   console.assert(authCallData.result?.content?.[0]?.text, 'Phải có kết quả thực thi tool');
   console.log('[PASS] tools/call với ?api-key= thực thi thành công trả về dữ liệu chuẩn xác!\n');
 
-  console.log('[SUCCESS] TẤT CẢ 24 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
+  // TEST 25: Kiểm tra Tool MCP tra_cuu_don_vi_tiep_nhan_truc_tuyen
+  console.log('--- TEST 25: Kiểm tra Tool tra_cuu_don_vi_tiep_nhan_truc_tuyen (DVCTT DVCQG API) ---');
+  const dvcttRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 251,
+      method: 'tools/call',
+      params: {
+        name: 'tra_cuu_don_vi_tiep_nhan_truc_tuyen',
+        arguments: {
+          q: '1.004884',
+          province_code: '52',
+          limit: 2,
+          dinh_dang: 'markdown'
+        }
+      }
+    })
+  });
+  const dvcttRpcRes = await netlifyHandler(dvcttRpcReq, {} as any);
+  console.assert(dvcttRpcRes.status === 200, `Tool tra_cuu_don_vi_tiep_nhan_truc_tuyen phải trả về 200, nhận: ${dvcttRpcRes.status}`);
+  const dvcttRpcData = (await dvcttRpcRes.json()) as any;
+  const dvcttMd = dvcttRpcData.result?.content?.[0]?.text || '';
+  console.assert(dvcttMd.includes('CƠ QUAN TIẾP NHẬN HỒ SƠ TRỰC TUYẾN') || dvcttMd.includes('DVC'), 'Phải chứa tiêu đề DVCTT');
+  console.log('[PASS] Tool tra_cuu_don_vi_tiep_nhan_truc_tuyen thực thi thành công trả về Markdown chuẩn xác!\n');
+
+  // TEST 26: Kiểm tra REST API endpoint /api/tthc/dvctt
+  console.log('--- TEST 26: Kiểm tra REST API endpoint /api/tthc/dvctt ---');
+  const dvcttApiReq = new Request('http://localhost:3000/api/tthc/dvctt?q=1.004884&province_code=52&limit=2&api-key=secret_test_key_123', {
+    method: 'GET'
+  });
+  const dvcttApiRes = await netlifyHandler(dvcttApiReq, {} as any);
+  console.assert(dvcttApiRes.status === 200, `REST /api/tthc/dvctt phải trả về 200, nhận: ${dvcttApiRes.status}`);
+  const dvcttApiJson = (await dvcttApiRes.json()) as any;
+  console.assert(dvcttApiJson.rows !== undefined, 'Phải có thuộc tính rows trong kết quả');
+  console.assert(dvcttApiJson.markdown !== undefined, 'Phải có thuộc tính markdown trong kết quả');
+  console.log('[PASS] REST API /api/tthc/dvctt thực thi thành công trả về JSON cấu trúc sạch!\n');
+
+  // TEST 27: Kiểm tra tra_cuu_theo_ma_tthc tích hợp tra_cuu_dvctt: true
+  console.log('--- TEST 27: Kiểm tra tra_cuu_theo_ma_tthc kèm tra_cuu_dvctt: true ---');
+  const detailDvcttRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 271,
+      method: 'tools/call',
+      params: {
+        name: 'tra_cuu_theo_ma_tthc',
+        arguments: {
+          ma_tthc: '1.004884',
+          tra_cuu_dvctt: true,
+          province_code: '52',
+          phan_muc: 'tat_ca',
+          dinh_dang: 'markdown'
+        }
+      }
+    })
+  });
+  const detailDvcttRpcRes = await netlifyHandler(detailDvcttRpcReq, {} as any);
+  console.assert(detailDvcttRpcRes.status === 200, `tra_cuu_theo_ma_tthc kèm tra_cuu_dvctt phải trả về 200, nhận: ${detailDvcttRpcRes.status}`);
+  const detailDvcttRpcData = (await detailDvcttRpcRes.json()) as any;
+  const detailDvcttText = detailDvcttRpcData.result?.content?.[0]?.text || '';
+  console.assert(detailDvcttText.length > 50, 'Phải trả về nội dung chi tiết TTHC kèm DVCTT');
+  console.log('[PASS] tra_cuu_theo_ma_tthc làm giàu dữ liệu DVCTT thành công!\n');
+
+  console.log('[SUCCESS] TẤT CẢ 27 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
 }
 
 runTests().catch(err => {

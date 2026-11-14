@@ -172,3 +172,54 @@ export interface NoiBoGiaLaiSearchParams extends NoiBoSearchParams {
   co_quan_thuc_hien?: string;
 }
 
+export interface DVCTTOptions {
+  q?: string;
+  formalityId?: string;
+  formalityCaseId?: string;
+  departmentId?: string;
+  departmentParentId?: string;
+  limit?: number;
+  lastId?: string;
+  implementLevel?: string; // 'FULL' | 'PARTIAL' | ''
+  formalityTargetType?: string;
+  provinceCode?: string;
+  wardCode?: string;
+  dinh_dang?: 'markdown' | 'json';
+}
+
+export interface DVCTTRow {
+  id: string;
+  formalityId?: string;
+  formalityCode?: string;
+  formalityCaseId?: string;
+  formalityCaseName?: string;
+  formalityCaseCode?: string;
+  departmentId?: string;
+  departmentName?: string;
+  departmentCode?: string;
+  departmentLevel?: string;
+  departmentType?: string;
+  implementLevel?: 'FULL' | 'PARTIAL' | string;
+  citizenUrl?: string;
+  employeeUrl?: string;
+  isEssential?: boolean;
+  categoryInfo?: Array<{
+    categoryId?: string;
+    categoryName?: string;
+    categoryCode?: string;
+    formalityCaseId?: string;
+  }>;
+}
+
+export interface DVCTTResult {
+  total: number;
+  lastId?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  q?: string;
+  implementLevel?: string;
+  rows: DVCTTRow[];
+  markdown: string;
+}
+
+

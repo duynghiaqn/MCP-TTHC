@@ -97,12 +97,82 @@ export const TraCuuChiTietSchema = z.object({
     .describe(
       'Phân mục cụ thể cần trích xuất: "tat_ca" (toàn bộ), "ho_so" (thành phần & số lượng hồ sơ), "trinh_tu" (các bước thực hiện), "chi_phi" (phí, lệ phí), "thoi_han" (thời hạn giải quyết), "can_cu_phap_ly" (văn bản quy phạm pháp luật), "yeu_cau_dieu_kien" (điều kiện thực hiện)'
     ),
+  tra_cuu_dvctt: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'Tự động tra cứu cơ quan/đơn vị đang mở tiếp nhận trực tuyến và mức độ DVCTT (Toàn trình / Một phần) tại địa phương kèm link nộp hồ sơ'
+    ),
+  province_code: z
+    .string()
+    .optional()
+    .describe(
+      'Mã tỉnh/thành phố cần kiểm tra DVCTT trực tuyến (ví dụ: "52" cho Gia Lai, "01" Hà Nội, "79" TP.HCM...)'
+    ),
   dinh_dang: z
     .enum(['markdown', 'json'])
     .optional()
     .default('markdown')
     .describe(
       'Định dạng trả về: "markdown" (văn bản trình bày đẹp cho người dùng) hoặc "json" (dữ liệu có cấu trúc sạch cho AI agent xử lý logic)'
+    )
+});
+
+export const TraCuuDonViTrucTuyenSchema = z.object({
+  q: z
+    .string()
+    .optional()
+    .describe(
+      'Từ khóa tìm kiếm hoặc Mã TTHC (ví dụ: "1.002821", "1.004884", "1.014352", "khai sinh", "đất đai", "hộ chiếu", "kết hôn"...)'
+    ),
+  province_code: z
+    .string()
+    .optional()
+    .default('52')
+    .describe(
+      'Mã tỉnh/thành phố trên Cổng DVCQG (ví dụ: "52" cho Gia Lai, "01" cho Hà Nội, "79" cho TP.HCM... hoặc tên tỉnh: "Gia Lai", "Hà Nội"). Để trống hoặc "tat_ca" để tra cứu toàn quốc.'
+    ),
+  implement_level: z
+    .enum(['tat_ca', 'FULL', 'PARTIAL'])
+    .optional()
+    .default('tat_ca')
+    .describe(
+      'Lọc theo Mức độ Dịch vụ công trực tuyến (DVCTT): "tat_ca" (toàn bộ), "FULL" (DVCTT Toàn trình - nộp và nhận kết quả trực tuyến 100%), "PARTIAL" (DVCTT Một phần - có nộp hồ sơ trực tuyến).'
+    ),
+  limit: z
+    .number()
+    .min(1)
+    .max(50)
+    .optional()
+    .default(10)
+    .describe('Số lượng kết quả hiển thị trên mỗi lần tra cứu (1-50, mặc định: 10)'),
+  formality_id: z
+    .string()
+    .optional()
+    .describe('UUID định danh thủ tục (formalityId) nếu có (ví dụ: "019bad30-cd8f-722b-a3c5-d131d484376c")'),
+  formality_case_id: z
+    .string()
+    .optional()
+    .describe('ID trường hợp thủ tục nếu muốn tìm kiếm đúng trường hợp con'),
+  department_id: z
+    .string()
+    .optional()
+    .describe('ID cơ quan tiếp nhận hồ sơ'),
+  ward_code: z
+    .string()
+    .optional()
+    .describe('Mã phường/xã nếu muốn tra cứu đúng cấp xã'),
+  last_id: z
+    .string()
+    .optional()
+    .describe('Con trỏ phân trang (lastId) từ lần gọi trước để lấy trang kết quả tiếp theo'),
+  dinh_dang: z
+    .enum(['markdown', 'json'])
+    .optional()
+    .default('markdown')
+    .describe(
+      'Định dạng kết quả trả về: "markdown" (bảng tổng hợp dễ đọc cho người dùng) hoặc "json" (dữ liệu có cấu trúc sạch cho AI agent)'
     )
 });
 
@@ -478,9 +548,11 @@ export function createTTHCMcpServer(): McpServer {
     'tra_cuu_theo_ma_tthc',
     'Tra cứu và truy xuất thông tin chi tiết chuyên sâu của Thủ tục Hành chính theo mã TTHC (ví dụ: "6.006781", "1.117102") hoặc tên/ID thủ tục. Hỗ trợ lọc theo từng phân mục cụ thể (hồ sơ, trình tự, chi phí, thời hạn giải quyết, căn cứ pháp lý, yêu cầu điều kiện) và tùy chọn định dạng trả về (Markdown hoặc JSON có cấu trúc).',
     TraCuuChiTietSchema.shape,
-    async ({ ma_tthc, phan_muc, dinh_dang }) => {
+    async ({ ma_tthc, phan_muc, tra_cuu_dvctt, province_code, dinh_dang }) => {
       const result = await tthcDataService.getDetail(ma_tthc, {
         phan_muc,
+        tra_cuu_dvctt,
+        province_code,
         dinh_dang
       });
 
@@ -801,6 +873,70 @@ export function createTTHCMcpServer(): McpServer {
     'Tra cứu TTHC Nội bộ tỉnh Gia Lai (alias rút gọn của tra_cuu_tthc_noi_bo_gia_lai).',
     TraCuuTthcNoiBoGiaLaiSchema.shape,
     noiBoGiaLaiHandler
+  );
+
+  // TOOL: Tra cứu Đơn vị tiếp nhận trực tuyến & Mức độ DVCTT
+  const dvcttHandler = async (params: z.infer<typeof TraCuuDonViTrucTuyenSchema>) => {
+    const result = await tthcDataService.getDepartmentOnlineSubmission({
+      q: params.q,
+      provinceCode: params.province_code,
+      implementLevel: params.implement_level,
+      limit: params.limit,
+      formalityId: params.formality_id,
+      formalityCaseId: params.formality_case_id,
+      departmentId: params.department_id,
+      wardCode: params.ward_code,
+      lastId: params.last_id,
+      dinh_dang: params.dinh_dang
+    });
+
+    if (params.dinh_dang === 'json') {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2)
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: result.markdown
+        }
+      ]
+    };
+  };
+
+  server.tool(
+    'tra_cuu_don_vi_tiep_nhan_truc_tuyen',
+    'Tra cứu cơ quan, đơn vị tiếp nhận hồ sơ trực tuyến và mức độ Dịch vụ công trực tuyến (Toàn trình FULL / Một phần PARTIAL) theo địa phương và mã/từ khóa TTHC trực tiếp từ Cổng Dịch vụ công Quốc gia (dichvucong.gov.vn). Cung cấp link nộp hồ sơ trực tuyến, cờ thủ tục thiết yếu quốc gia, UUID formalityId và mã cơ quan giải quyết.',
+    TraCuuDonViTrucTuyenSchema.shape,
+    dvcttHandler
+  );
+
+  server.tool(
+    'tra_cuu_dvctt_dia_phuong',
+    'Tra cứu mức độ Dịch vụ công trực tuyến và các đơn vị đang tiếp nhận hồ sơ trực tuyến theo tỉnh/thành phố và mã/tên thủ tục (alias của tra_cuu_don_vi_tiep_nhan_truc_tuyen).',
+    TraCuuDonViTrucTuyenSchema.shape,
+    dvcttHandler
+  );
+
+  server.tool(
+    'tra_cuu_muc_do_dvctt',
+    'Tra cứu mức độ DVCTT (Toàn trình FULL / Một phần PARTIAL) và link nộp hồ sơ trực tuyến tại các địa phương (alias của tra_cuu_don_vi_tiep_nhan_truc_tuyen).',
+    TraCuuDonViTrucTuyenSchema.shape,
+    dvcttHandler
+  );
+
+  server.tool(
+    'tthc_dvctt_truc_tuyen',
+    'Tra cứu đơn vị tiếp nhận hồ sơ trực tuyến và link nộp DVCTT (alias của tra_cuu_don_vi_tiep_nhan_truc_tuyen).',
+    TraCuuDonViTrucTuyenSchema.shape,
+    dvcttHandler
   );
 
   // TOOL 9: `search` chuẩn OpenAI (bắt buộc cho ChatGPT Deep Research / Company Knowledge connectors)
@@ -1707,6 +1843,52 @@ export function getOpenApiSchema(baseUrl = 'https://mcp-tthc.netlify.app') {
           ],
           responses: {
             '200': { description: 'Danh sách và thông tin chi tiết TTHC nội bộ tỉnh Gia Lai' }
+          }
+        }
+      },
+      '/api/tthc/dvctt': {
+        get: {
+          operationId: 'getDepartmentOnlineSubmission',
+          summary: 'Tra cứu đơn vị tiếp nhận hồ sơ trực tuyến và thông tin mức độ DVCTT tại địa phương từ Cổng DVCQG',
+          parameters: [
+            {
+              name: 'q',
+              in: 'query',
+              schema: { type: 'string' },
+              description: 'Từ khóa tìm kiếm hoặc Mã TTHC (ví dụ: "1.002821", "1.004884", "khai sinh")'
+            },
+            {
+              name: 'province_code',
+              in: 'query',
+              schema: { type: 'string', default: '52' },
+              description: 'Mã tỉnh/thành phố trên Cổng DVCQG (ví dụ: "52" cho Gia Lai, "01" cho Hà Nội, "79" cho TP.HCM...)'
+            },
+            {
+              name: 'implement_level',
+              in: 'query',
+              schema: { type: 'string', enum: ['tat_ca', 'FULL', 'PARTIAL'], default: 'tat_ca' },
+              description: 'Mức độ DVCTT (FULL - Toàn trình, PARTIAL - Một phần)'
+            },
+            {
+              name: 'formality_id',
+              in: 'query',
+              schema: { type: 'string' },
+              description: 'UUID định danh thủ tục (formalityId)'
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', default: 10 }
+            },
+            {
+              name: 'last_id',
+              in: 'query',
+              schema: { type: 'string' },
+              description: 'Con trỏ phân trang'
+            }
+          ],
+          responses: {
+            '200': { description: 'Danh sách đơn vị tiếp nhận hồ sơ trực tuyến và mức độ DVCTT' }
           }
         }
       },

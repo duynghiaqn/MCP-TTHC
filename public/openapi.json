@@ -764,6 +764,74 @@
         }
       }
     },
+    "/api/tthc/dvctt": {
+      "get": {
+        "operationId": "getDepartmentOnlineSubmission",
+        "summary": "Tra cứu đơn vị tiếp nhận hồ sơ trực tuyến và thông tin mức độ DVCTT tại địa phương từ Cổng DVCQG",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Từ khóa tìm kiếm hoặc Mã TTHC (ví dụ: \"1.002821\", \"1.004884\", \"khai sinh\")"
+          },
+          {
+            "name": "province_code",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "52"
+            },
+            "description": "Mã tỉnh/thành phố trên Cổng DVCQG (ví dụ: \"52\" cho Gia Lai, \"01\" cho Hà Nội, \"79\" cho TP.HCM...)"
+          },
+          {
+            "name": "implement_level",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "FULL",
+                "PARTIAL"
+              ],
+              "default": "tat_ca"
+            },
+            "description": "Mức độ DVCTT (FULL - Toàn trình, PARTIAL - Một phần)"
+          },
+          {
+            "name": "formality_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "UUID định danh thủ tục (formalityId)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "last_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Con trỏ phân trang"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách đơn vị tiếp nhận hồ sơ trực tuyến và mức độ DVCTT"
+          }
+        }
+      }
+    },
     "/api/tthc/stats": {
       "get": {
         "operationId": "getStats",
