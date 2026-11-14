@@ -819,6 +819,29 @@ document.addEventListener('DOMContentLoaded', () => {
       if (line.startsWith('# ')) {
         const titleText = line.slice(2).trim();
         html += `<div class="detail-header-block"><h2 class="detail-title"><i class="bi bi-file-earmark-text-fill"></i> ${escapeHtml(titleText)}</h2></div>`;
+      } else if (line.startsWith('## ')) {
+        if (inCard) {
+          html += '</div></div>';
+          inCard = false;
+        }
+        const sectionTitle = line.slice(3).trim();
+        let cardClass = 'section-card';
+        let sectionIcon = 'bi-building-check';
+        let accentBorder = '#f59e0b';
+        let accentBg = 'rgba(245, 158, 11, 0.06)';
+
+        if (sectionTitle.includes('HTGQ') || sectionTitle.includes('HỆ THỐNG GIẢI QUYẾT')) {
+          accentBorder = '#10b981';
+          accentBg = 'rgba(16, 185, 129, 0.06)';
+          sectionIcon = 'bi-shield-check';
+        } else if (sectionTitle.includes('LIVE') || sectionTitle.includes('DVCQG')) {
+          accentBorder = '#ef4444';
+          accentBg = 'rgba(239, 68, 68, 0.06)';
+          sectionIcon = 'bi-broadcast';
+        }
+
+        html += `<div class="${cardClass} mt-3" style="border-left: 4px solid ${accentBorder}; background: ${accentBg};"><h3 class="detail-section-title" style="color: ${accentBorder};"><i class="bi ${sectionIcon}"></i> ${escapeHtml(sectionTitle)}</h3><div class="section-card-content">`;
+        inCard = true;
       } else if (line.startsWith('### ')) {
         if (inCard) {
           html += '</div></div>';
@@ -887,6 +910,52 @@ document.addEventListener('DOMContentLoaded', () => {
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
           .replace(/`([^`]+)`/g, '<code>$1</code>')
           .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="dvc-direct-link"><i class="bi bi-box-arrow-up-right"></i> $1</a>');
+
+        if (content.includes('Mức độ DVCTT') || content.includes('Mức độ:')) {
+          let badgeColor = '#38bdf8';
+          let badgeBg = 'rgba(56, 189, 248, 0.12)';
+          let badgeBorder = 'rgba(56, 189, 248, 0.3)';
+          let icon = 'bi-globe2';
+
+          if (content.includes('Toàn trình')) {
+            badgeColor = '#10b981';
+            badgeBg = 'rgba(16, 185, 129, 0.12)';
+            badgeBorder = 'rgba(16, 185, 129, 0.35)';
+            icon = 'bi-check-circle-fill';
+          } else if (content.includes('Một phần')) {
+            badgeColor = '#f59e0b';
+            badgeBg = 'rgba(245, 158, 11, 0.12)';
+            badgeBorder = 'rgba(245, 158, 11, 0.35)';
+            icon = 'bi-lightning-charge-fill';
+          } else if (content.includes('Chưa cung cấp')) {
+            badgeColor = '#94a3b8';
+            badgeBg = 'rgba(148, 163, 184, 0.12)';
+            badgeBorder = 'rgba(148, 163, 184, 0.25)';
+            icon = 'bi-building';
+          }
+
+          html += `
+            <div class="detail-muc-do-banner" style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeColor}; padding: 10px 14px; border-radius: 8px; margin: 8px 0 12px 0; display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
+              <i class="bi ${icon}" style="font-size: 1.25rem; flex-shrink: 0;"></i>
+              <div class="muc-do-content" style="flex: 1; color: var(--text-main);">
+                ${formatted}
+              </div>
+            </div>
+          `;
+          continue;
+        }
+
+        if (content.includes('Cổng tiếp nhận hồ sơ')) {
+          html += `
+            <div class="detail-dvc-banner" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.35); margin: 8px 0 12px 0;">
+              <i class="bi bi-box-arrow-up-right" style="color: #10b981;"></i>
+              <div class="dvc-banner-content">
+                <div>${formatted}</div>
+              </div>
+            </div>
+          `;
+          continue;
+        }
 
         if (content.includes('Cổng DVC Quốc gia') || content.includes('Link TTHC gốc') || content.includes('Link DVC')) {
           html += `
@@ -977,12 +1046,38 @@ document.addEventListener('DOMContentLoaded', () => {
       currentModalMarkdown = md;
 
       // Cập nhật link DVC theo URL trực tiếp từ kết quả
-      const matchLink = md.match(/Link (?:TTHC gốc|DVC)[^:]*:\s*\[(?:[^\]]*)\]\((https?:\/\/[^)]+)\)/);
+      const matchLink = md.match(/Cổng tiếp nhận hồ sơ[^:]*:\s*\[(?:[^\]]*)\]\((https?:\/\/[^)]+)\)/) ||
+                        md.match(/Link (?:TTHC gốc|DVC)[^:]*:\s*\[(?:[^\]]*)\]\((https?:\/\/[^)]+)\)/);
       if (matchLink && matchLink[1]) {
         const btnLink = document.getElementById('modal-dvc-link-btn');
         if (btnLink) {
           btnLink.href = matchLink[1];
+          btnLink.style.display = 'inline-flex';
         }
+      }
+
+      // Trích xuất Mức độ DVCTT để gắn badge trực quan trên tiêu đề Modal
+      const matchMucDo = md.match(/\*\*Mức độ DVCTT\*\*:\s*([^\n\r]+)/);
+      let mucDoPill = '';
+      if (matchMucDo && matchMucDo[1]) {
+        const txt = matchMucDo[1];
+        if (txt.includes('Toàn trình')) {
+          mucDoPill = '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;"><i class="bi bi-check-circle-fill"></i> DVCTT Toàn trình</span>';
+        } else if (txt.includes('Một phần')) {
+          mucDoPill = '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;"><i class="bi bi-lightning-charge-fill"></i> DVCTT Một phần</span>';
+        } else if (txt.includes('Chưa cung cấp')) {
+          mucDoPill = '<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;"><i class="bi bi-building"></i> Chưa có DVCTT</span>';
+        }
+      }
+
+      if (mucDoPill) {
+        modalTitle.innerHTML = `
+          <span>Chi tiết TTHC: ${escapeHtml(code)}</span>
+          ${mucDoPill}
+          <a href="${matchLink ? matchLink[1] : initialUrl}" id="modal-dvc-link-btn" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs modal-dvc-badge" title="Mở trang nộp hồ sơ trực tuyến" style="${(matchLink || initialUrl) ? '' : 'display: none;'}">
+            <i class="bi bi-send-fill"></i> Nộp hồ sơ
+          </a>
+        `;
       }
 
       // Render nội dung giao diện và gán mã nguồn Markdown có cấu trúc

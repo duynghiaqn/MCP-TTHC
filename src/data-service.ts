@@ -779,21 +779,25 @@ class TTHCDataService {
       yeu_cau_dieu_kien: detailData.requirementsAndConditions || []
     };
 
-    const md = this.formatDetailMarkdown(detailData, indexItem || undefined, phanMuc);
-    let finalMd = md;
-    let finalJson: any = structuredJson;
     let htgqData: HTGQResult | null = null;
-
     try {
       htgqData = await this.checkHTGQ(identifier, { provinceCode: options?.province_code || '52' });
-      if (typeof finalJson === 'object' && finalJson !== null) {
-        finalJson.htgq = htgqData;
-      }
-      if (options?.tra_cuu_dvctt || options?.province_code) {
-        finalMd += '\n\n' + htgqData.markdown;
-      }
     } catch (e) {
       console.warn('[TTHC DataService] Không thể kiểm tra HTGQ cho thủ tục:', e);
+    }
+
+    const md = this.formatDetailMarkdown(detailData, indexItem || undefined, phanMuc, htgqData);
+    let finalMd = md;
+    let finalJson: any = structuredJson;
+
+    if (htgqData && typeof finalJson === 'object' && finalJson !== null) {
+      finalJson.htgq = htgqData;
+    }
+
+    if (options?.tra_cuu_dvctt || options?.province_code) {
+      if (htgqData) {
+        finalMd += '\n\n' + htgqData.markdown;
+      }
     }
 
     if (options?.tra_cuu_dvctt || options?.province_code) {
@@ -1075,7 +1079,8 @@ class TTHCDataService {
   formatDetailMarkdown(
     detail: TTHCDetail,
     indexItem?: TTHCIndexItem,
-    phanMuc: DetailSection = 'tat_ca'
+    phanMuc: DetailSection = 'tat_ca',
+    htgq?: HTGQResult | null
   ): string {
     const lines: string[] = [];
 
@@ -1215,6 +1220,28 @@ class TTHCDataService {
     lines.push(`- **Đối tượng thực hiện**: ${doiTuongThucHien}`);
     lines.push(`- **Lĩnh vực**: ${linhVuc}`);
     lines.push(`- **Mức phí**: ${coThuPhi}${indexItem?.chi_tiet_phi ? ` (${indexItem.chi_tiet_phi})` : ''}`);
+
+    // Mức độ dịch vụ công trực tuyến (DVCTT)
+    let mucDoText = 'Chưa xác định';
+    if (htgq?.implement_level && htgq.implement_level !== 'Chưa cung cấp') {
+      mucDoText = htgq.implement_level === 'Toàn trình'
+        ? 'Dịch vụ công trực tuyến Toàn trình (Cung cấp 100% online)'
+        : `Dịch vụ công trực tuyến Một phần (${htgq.implement_level})`;
+    } else if (htgq?.status === 'Chưa cung cấp') {
+      mucDoText = 'Chưa cung cấp dịch vụ công trực tuyến (Nộp trực tiếp tại Bộ phận Một cửa / Bưu chính công ích)';
+    } else if ((detail as any).isFullProcess) {
+      mucDoText = 'Dịch vụ công trực tuyến Toàn trình';
+    } else if (indexItem?.muc_do && indexItem.muc_do !== 'Chưa cập nhật') {
+      mucDoText = indexItem.muc_do;
+    } else if (indexItem?.muc_do) {
+      mucDoText = indexItem.muc_do;
+    }
+
+    lines.push(`- **Mức độ DVCTT**: ${mucDoText}`);
+    if (htgq?.target_dvc_url) {
+      lines.push(`- **Cổng tiếp nhận hồ sơ**: [👉 Nộp hồ sơ trực tuyến (${htgq.loaiHTGQ || 'DVC'})](${htgq.target_dvc_url})`);
+    }
+
     lines.push(`- **Kết quả thực hiện**: ${ketQuaTomTat}`);
     if (dvcUrl) {
       lines.push(`- **Link TTHC gốc (Cổng DVC Quốc gia)**: [${dvcUrl}](${dvcUrl})`);
