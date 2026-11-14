@@ -9,7 +9,7 @@
 [![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05-blue.svg)](https://modelcontextprotocol.io)
 [![OpenAPI 3.1.0](https://img.shields.io/badge/OpenAPI-3.1.0-brightgreen.svg)](https://www.openapis.org/)
 [![OpenAI Plugins](https://img.shields.io/badge/OpenAI%20Plugins-Compatible-purple.svg)](https://developers.openai.com/plugins)
-[![Tests](https://img.shields.io/badge/Test%20Suite-29%2F29%20PASS%20(100%25)-success.svg)](#kiểm-thử-hệ-thống)
+[![Tests](https://img.shields.io/badge/Test%20Suite-31%2F31%20PASS%20(100%25)-success.svg)](#kiểm-thử-hệ-thống)
 [![Netlify Deploy Ready](https://img.shields.io/badge/Netlify-Serverless%20Ready-00C7B7.svg)](https://www.netlify.com)
 
 Ứng dụng **MCP (Model Context Protocol) Server** chuyên dụng phục vụ tra cứu toàn diện cơ sở dữ liệu **Thủ tục Hành chính (TTHC) Việt Nam**, được thiết kế tối ưu cho nền tảng serverless **Netlify Functions** cũng như Node.js Container/Server độc lập. 
@@ -236,6 +236,7 @@ flowchart TD
 | **`tra_cuu_tthc_noi_bo_gia_lai`**<br>*(alias: `tthc_noi_bo_gia_lai`, `tthc_gia_lai_noi_bo`)* | `tu_khoa`, `ma_tthc`, `cap_thuc_hien`, `co_quan`, `linh_vuc`, `nhom_noi_bo`, `chi_tiet`, `limit`, `page`, `dinh_dang` | Tra cứu chuyên sâu các Thủ tục Hành chính Nội bộ thuộc phạm vi tỉnh Gia Lai (cấp tỉnh, cấp xã, UBND tỉnh Gia Lai, Chủ tịch UBND tỉnh, các Sở ban ngành địa phương). Bao gồm TTHC giữa các cơ quan và nội bộ từng cơ quan trên địa bàn Gia Lai theo Nghị định số 385/2026/NĐ-CP. Hỗ trợ xuất chi tiết quy trình & hồ sơ. |
 | **`tra_cuu_don_vi_tiep_nhan_truc_tuyen`**<br>*(alias: `tra_cuu_dvctt`, `tthc_dvctt`)* | `q`, `province_code`, `implement_level`, `limit`, `formality_id`, `formality_case_id`, `department_id`, `ward_code`, `last_id`, `dinh_dang` | Tra cứu cơ quan tiếp nhận trực tuyến theo địa phương & Mã TTHC qua API Cổng Dịch vụ công Quốc gia (`POST /api/v1/submitting/formality/list-department-url-by-citizen`), lấy danh sách cơ quan, mức độ DVCTT (Toàn trình / Một phần), liên kết nộp hồ sơ citizenUrl, cờ thiết yếu isEssential. |
 | **`kiem_tra_htgq_tthc`**<br>*(alias: `tra_cuu_htgq_tthc`, `tthc_htgq`)* | `ma_hoac_id_tthc` *(string, bắt buộc)*<br>`province_code` *(string, tùy chọn: "52")*<br>`dinh_dang` *(enum, tùy chọn: markdown, json)* | Kiểm tra phân loại Hệ thống Giải quyết TTHC (HTGQ) và tính khả dụng tiếp nhận trực tuyến của thủ tục. Tự động chuyển đổi mã/UUID, kiểm tra tiếp nhận trực tuyến; nếu chưa cung cấp thì trả về "Chưa cung cấp", nếu có thì trích xuất liên kết nộp hồ sơ, phân loại nguồn HTGQ (Địa phương / Bộ ngành / Quốc gia), mức độ triển khai (Toàn trình / Một phần) và cấp thực hiện. |
+| **`lay_thong_tin_tthc_live`**<br>*(alias: `tra_cuu_tthc_live`, `tthc_live_dvcqg`)* | `ma_hoac_id_tthc` *(string, bắt buộc)*<br>`phan_muc` *(enum, tùy chọn: tat_ca, trinh_tu, can_cu_phap_ly, thoi_han, ket_qua, yeu_cau_dieu_kien)*<br>`dinh_dang` *(enum, tùy chọn: markdown, json)* | Lấy thông tin TTHC Live thời gian thực trực tiếp từ Cổng Dịch vụ công Quốc gia (`POST /api/v1/configuring/formality/get-formality-by-citizen`). Trích xuất toàn văn tên TTHC, mã TTHC, số quyết định ban hành, cơ quan ban hành, cấp thực hiện, cách thức thực hiện & biểu mức phí/lệ phí, trình tự các bước chi tiết, kết quả thực hiện, yêu cầu điều kiện và toàn bộ danh mục văn bản căn cứ pháp lý. |
 | **`thong_tin_mcp_server`** | *Không yêu cầu* | Trả về thông tin phiên bản máy chủ (`v1.1.0`), tác giả (`Dev by KynChou`), chuẩn giao thức MCP và trạng thái cơ sở dữ liệu quốc gia. |
 
 ---
@@ -600,6 +601,21 @@ Mọi tool call đều tuân thủ nghiêm ngặt chuẩn **JSON Schema Draft-07
 }
 ```
 
+### 13. `lay_thong_tin_tthc_live` *(alias: `tra_cuu_tthc_live`, `tthc_live_dvcqg`)*
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "ma_hoac_id_tthc": { "type": "string", "description": "Mã TTHC (ví dụ: 1.004884, 6.006781, 1.116788), UUID định danh hoặc tên TTHC để truy vấn live từ Cổng DVCQG" },
+    "phan_muc": { "type": "string", "enum": ["tat_ca", "trinh_tu", "can_cu_phap_ly", "thoi_han", "ket_qua", "yeu_cau_dieu_kien"], "default": "tat_ca" },
+    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
+  },
+  "required": ["ma_hoac_id_tthc"],
+  "additionalProperties": false
+}
+```
+
 ### 9. `tra_cuu_tthc_noi_bo` *(alias: `tthc_noi_bo`)*
 ```json
 {
@@ -678,6 +694,21 @@ Mọi tool call đều tuân thủ nghiêm ngặt chuẩn **JSON Schema Draft-07
   "properties": {
     "ma_hoac_id_tthc": { "type": "string", "description": "Mã TTHC (ví dụ: 1.004884, 5.003972), UUID định danh thủ tục hoặc tên thủ tục" },
     "province_code": { "type": "string", "default": "52", "description": "Mã tỉnh/thành phố kiểm tra trên DVCQG (mặc định: 52 cho Gia Lai)" },
+    "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
+  },
+  "required": ["ma_hoac_id_tthc"],
+  "additionalProperties": false
+}
+```
+
+### 13. `lay_thong_tin_tthc_live` *(alias: `tra_cuu_tthc_live`, `tthc_live_dvcqg`)*
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "ma_hoac_id_tthc": { "type": "string", "description": "Mã TTHC (ví dụ: 1.004884, 6.006781, 1.116788), UUID định danh hoặc tên TTHC để truy vấn live từ Cổng DVCQG" },
+    "phan_muc": { "type": "string", "enum": ["tat_ca", "trinh_tu", "can_cu_phap_ly", "thoi_han", "ket_qua", "yeu_cau_dieu_kien"], "default": "tat_ca" },
     "dinh_dang": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
   },
   "required": ["ma_hoac_id_tthc"],
@@ -858,6 +889,7 @@ Hệ thống cung cấp song song giao diện REST API chuẩn cho các nền t�
 | `/api/tthc/noi-bo-gia-lai` | `GET`, `POST` | `q`, `ma_tthc`, `co_quan`, `linhvuc`, `cap`, `nhom_noi_bo`, `chi_tiet`, `limit`, `page` | Tra cứu chuyên sâu TTHC nội bộ phạm vi tỉnh Gia Lai |
 | `/api/tthc/dvctt` | `GET`, `POST` | `q`, `province_code`, `implement_level`, `limit`, `formality_id` | Tra cứu cơ quan tiếp nhận hồ sơ trực tuyến từ Cổng DVCQG |
 | `/api/tthc/htgq` | `GET`, `POST` | `id`, `ma_tthc`, `province_code`, `dinh_dang` | Kiểm tra phân loại HTGQ (Địa phương/Quốc gia/Bộ ngành) và tính khả dụng DVCTT |
+| `/api/tthc/live` | `GET`, `POST` | `id`, `ma_tthc`, `phan_muc`, `dinh_dang` | Lấy thông tin TTHC Live trực tiếp thời gian thực từ Cổng DVCQG |
 | `/api/tthc/stats` | `GET` | *Không* | Lấy số liệu thống kê tổng hợp CSDL Quốc gia |
 | `/openapi.json` | `GET` | *Không* | Đặc tả kỹ thuật OpenAPI 3.1.0 đầy đủ |
 | `/.well-known/ai-plugin.json` | `GET` | *Không* | Manifest cấu hình cho OpenAI Plugins |
@@ -872,11 +904,11 @@ npm install
 ```
 
 ### 2. Kiểm Thử Hệ Thống (Automated Test Suite)
-Bộ test tự động kiểm tra toàn diện 29 kịch bản từ xác thực, tải dữ liệu CDN, 12 tool calls, kiểm tra HTGQ trực tuyến/chưa cung cấp, xử lý lỗi 405 đến các REST API:
+Bộ test tự động kiểm tra toàn diện 31 kịch bản từ xác thực, tải dữ liệu CDN, 13 tool calls, kiểm tra HTGQ trực tuyến/chưa cung cấp, lấy TTHC live DVCQG, xử lý lỗi 405 đến các REST API:
 ```bash
 npm test
 ```
-*Kết quả mong đợi: `[SUCCESS] TẤT CẢ 29 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!`*
+*Kết quả mong đợi: `[SUCCESS] TẤT CẢ 31 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!`*
 
 ### 3. Chạy Môi Trường Phát Triển Cục Bộ
 ```bash

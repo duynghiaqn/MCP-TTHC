@@ -193,6 +193,29 @@ export const KiemTraHtgqSchema = z.object({
     .describe('Định dạng kết quả trả về: "markdown" (văn bản đẹp) hoặc "json" (dữ liệu có cấu trúc cho AI agent)')
 });
 
+export const LayThongTinTthcLiveSchema = z.object({
+  ma_hoac_id_tthc: z
+    .string()
+    .min(1, 'Mã hoặc ID thủ tục hành chính không được để trống')
+    .describe(
+      'Mã TTHC (ví dụ: "1.004884", "6.006781", "1.116788", "2.000806"), UUID định danh thủ tục hoặc tên TTHC để truy vấn trực tiếp từ Cổng DVCQG (https://dichvucong.gov.vn/api/v1/configuring/formality/get-formality-by-citizen)'
+    ),
+  phan_muc: z
+    .enum(['tat_ca', 'trinh_tu', 'can_cu_phap_ly', 'thoi_han', 'ket_qua', 'yeu_cau_dieu_kien'])
+    .optional()
+    .default('tat_ca')
+    .describe(
+      'Phân mục cần lấy: "tat_ca" (toàn bộ thông tin live), "trinh_tu" (các bước thực hiện), "can_cu_phap_ly" (văn bản quy phạm), "thoi_han" (thời hạn & lệ phí), "ket_qua" (kết quả thực hiện), "yeu_cau_dieu_kien" (yêu cầu điều kiện)'
+    ),
+  dinh_dang: z
+    .enum(['markdown', 'json'])
+    .optional()
+    .default('markdown')
+    .describe(
+      'Định dạng trả về: "markdown" (văn bản trình bày đẹp cho người dùng) hoặc "json" (dữ liệu có cấu trúc từ Cổng DVCQG)'
+    )
+});
+
 export const TimKiemTheoTenSchema = z.object({
   ten_tthc: z
     .string()
@@ -1002,6 +1025,54 @@ export function createTTHCMcpServer(): McpServer {
     'Kiểm tra tình trạng HTGQ TTHC (alias rút gọn của kiem_tra_htgq_tthc).',
     KiemTraHtgqSchema.shape,
     htgqHandler
+  );
+
+  const liveHandler = async (params: z.infer<typeof LayThongTinTthcLiveSchema>) => {
+    const result = await tthcDataService.getFormalityLive(params.ma_hoac_id_tthc, {
+      phan_muc: params.phan_muc,
+      dinh_dang: params.dinh_dang
+    });
+
+    if (params.dinh_dang === 'json') {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result.data || result, null, 2)
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: result.markdown
+        }
+      ]
+    };
+  };
+
+  server.tool(
+    'lay_thong_tin_tthc_live',
+    'Lấy thông tin Thủ tục Hành chính Live thời gian thực trực tiếp từ Cổng Dịch vụ công Quốc gia (POST https://dichvucong.gov.vn/api/v1/configuring/formality/get-formality-by-citizen). Trích xuất toàn văn tên TTHC, mã TTHC, số quyết định ban hành, cơ quan ban hành, cấp thực hiện, cách thức thực hiện & mức phí/lệ phí, trình tự các bước giải quyết chi tiết, kết quả thực hiện, yêu cầu điều kiện và danh mục căn cứ pháp lý.',
+    LayThongTinTthcLiveSchema.shape,
+    liveHandler
+  );
+
+  server.tool(
+    'tra_cuu_tthc_live',
+    'Tra cứu thông tin TTHC Live trực tiếp từ Cổng DVCQG (alias của lay_thong_tin_tthc_live).',
+    LayThongTinTthcLiveSchema.shape,
+    liveHandler
+  );
+
+  server.tool(
+    'tthc_live_dvcqg',
+    'Lấy dữ liệu TTHC thời gian thực từ Cổng DVCQG (alias rút gọn của lay_thong_tin_tthc_live).',
+    LayThongTinTthcLiveSchema.shape,
+    liveHandler
   );
 
   // TOOL 9: `search` chuẩn OpenAI (bắt buộc cho ChatGPT Deep Research / Company Knowledge connectors)
@@ -1978,6 +2049,36 @@ export function getOpenApiSchema(baseUrl = 'https://mcp-tthc.netlify.app') {
           ],
           responses: {
             '200': { description: 'Kết quả kiểm tra HTGQ và link nộp hồ sơ trực tuyến' }
+          }
+        }
+      },
+      '/api/tthc/live': {
+        get: {
+          operationId: 'getFormalityLive',
+          summary: 'Lấy thông tin TTHC Live trực tiếp thời gian thực từ Cổng DVCQG',
+          parameters: [
+            {
+              name: 'id',
+              in: 'query',
+              required: true,
+              schema: { type: 'string' },
+              description: 'Mã TTHC (ví dụ: "1.004884", "6.006781", "1.116788") hoặc UUID formalityId'
+            },
+            {
+              name: 'phan_muc',
+              in: 'query',
+              schema: { type: 'string', enum: ['tat_ca', 'trinh_tu', 'can_cu_phap_ly', 'thoi_han', 'ket_qua', 'yeu_cau_dieu_kien'], default: 'tat_ca' },
+              description: 'Phân mục thông tin cần lấy'
+            },
+            {
+              name: 'dinh_dang',
+              in: 'query',
+              schema: { type: 'string', enum: ['markdown', 'json'], default: 'markdown' },
+              description: 'Định dạng trả về (markdown hoặc json)'
+            }
+          ],
+          responses: {
+            '200': { description: 'Thông tin chi tiết thủ tục hành chính live từ Cổng DVCQG' }
           }
         }
       },

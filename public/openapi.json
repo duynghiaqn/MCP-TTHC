@@ -863,6 +863,58 @@
         }
       }
     },
+    "/api/tthc/live": {
+      "get": {
+        "operationId": "getFormalityLive",
+        "summary": "Lấy thông tin TTHC Live trực tiếp thời gian thực từ Cổng DVCQG",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mã TTHC (ví dụ: \"1.004884\", \"6.006781\", \"1.116788\") hoặc UUID formalityId"
+          },
+          {
+            "name": "phan_muc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tat_ca",
+                "trinh_tu",
+                "can_cu_phap_ly",
+                "thoi_han",
+                "ket_qua",
+                "yeu_cau_dieu_kien"
+              ],
+              "default": "tat_ca"
+            },
+            "description": "Phân mục thông tin cần lấy"
+          },
+          {
+            "name": "dinh_dang",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "json"
+              ],
+              "default": "markdown"
+            },
+            "description": "Định dạng trả về (markdown hoặc json)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thông tin chi tiết thủ tục hành chính live từ Cổng DVCQG"
+          }
+        }
+      }
+    },
     "/api/tthc/stats": {
       "get": {
         "operationId": "getStats",

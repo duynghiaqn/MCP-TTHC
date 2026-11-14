@@ -827,6 +827,21 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       });
       return jsonResponse(result, 200, true);
     }
+
+    // GET / POST /api/tthc/live (Lấy thông tin TTHC Live trực tiếp từ Cổng DVCQG)
+    if (subPath === '/live') {
+      const id = getParam('id') || getParam('ma_tthc') || getParam('q') || '';
+      const phanMuc = (getParam('phan_muc') || 'tat_ca') as any;
+      const dinhDang = (getParam('dinh_dang') || 'markdown') as 'markdown' | 'json';
+      if (!id) {
+        return jsonResponse({ error: 'Thiếu tham số id hoặc ma_tthc' }, 400);
+      }
+      const result = await tthcDataService.getFormalityLive(id, {
+        phan_muc: phanMuc,
+        dinh_dang: dinhDang
+      });
+      return jsonResponse(result, result.success ? 200 : 404, true);
+    }
   }
 
   // Fallback 404 cho các đường dẫn không tồn tại

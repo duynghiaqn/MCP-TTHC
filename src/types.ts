@@ -250,5 +250,88 @@ export interface HTGQResult {
   markdown: string;
 }
 
+export interface DVCQGLiveExecutionStep {
+  name?: string;
+  description?: string;
+}
+
+export interface DVCQGLiveFee {
+  type?: string;
+  value?: number;
+  description?: string;
+  currencyName?: string;
+}
+
+export interface DVCQGLiveExecutionMethod {
+  submissionMethod?: 'DIRECT' | 'ONLINE' | string;
+  processingTime?: number;
+  processingTimeUnit?: 'WORKING_DAY' | 'DAY' | string;
+  description?: string;
+  fees?: DVCQGLiveFee[];
+}
+
+export interface DVCQGLiveLegalBasis {
+  id?: string;
+  name?: string;
+  code?: string;
+}
+
+export interface DVCQGLiveResultItem {
+  id?: string;
+  name?: string;
+  code?: string;
+}
+
+export interface DVCQGLiveCase {
+  id?: string;
+  name?: string;
+  code?: string;
+  processingDay?: {
+    qty?: number;
+    type?: string;
+  };
+  profileComponents?: unknown[];
+}
+
+export interface DVCQGLiveCategory {
+  id?: string;
+  name?: string;
+  code?: string;
+}
+
+export interface DVCQGLiveFormality {
+  id: string;
+  code?: string;
+  codeNotation?: string;
+  name?: string;
+  decisionNo?: string;
+  departmentPromulgateName?: string;
+  description?: string;
+  keywords?: string;
+  executionSteps?: DVCQGLiveExecutionStep[];
+  executionMethods?: DVCQGLiveExecutionMethod[];
+  legalBasisesDetails?: DVCQGLiveLegalBasis[];
+  resultsDetails?: DVCQGLiveResultItem[];
+  cases?: DVCQGLiveCase[];
+  categoriesDetails?: DVCQGLiveCategory[];
+  returningMethods?: Array<{ type?: string; value?: string[] }>;
+  isFullProcess?: boolean;
+  isWard?: boolean;
+  isProvince?: boolean;
+  isMinistry?: boolean;
+  isOtherAgency?: boolean;
+  [key: string]: unknown;
+}
+
+export interface LiveFormalityResult {
+  success: boolean;
+  id: string;
+  code?: string;
+  name?: string;
+  data?: DVCQGLiveFormality;
+  markdown: string;
+  error?: string;
+}
+
 
 

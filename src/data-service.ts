@@ -13,7 +13,9 @@ import type {
   DVCTTRow,
   DVCTTResult,
   HTGQConfig,
-  HTGQResult
+  HTGQResult,
+  DVCQGLiveFormality,
+  LiveFormalityResult
 } from './types.js';
 
 export const PROVINCE_MAP: Record<string, string> = {
@@ -2871,6 +2873,271 @@ class TTHCDataService {
       first_row: firstRow,
       markdown: lines.join('\n')
     };
+  }
+
+  /**
+   * Lấy thông tin TTHC Live trực tiếp từ Cổng Dịch vụ công Quốc gia:
+   * Endpoint: POST https://dichvucong.gov.vn/api/v1/configuring/formality/get-formality-by-citizen
+   * Payload: { id: formalityId (UUID) }
+   */
+  async getFormalityLive(
+    identifier: string,
+    options?: {
+      phan_muc?: 'tat_ca' | 'trinh_tu' | 'can_cu_phap_ly' | 'thoi_han' | 'ket_qua' | 'yeu_cau_dieu_kien' | DetailSection;
+      dinh_dang?: 'markdown' | 'json';
+    }
+  ): Promise<LiveFormalityResult> {
+    const rawId = (identifier || '').trim();
+    if (!rawId) {
+      return {
+        success: false,
+        id: '',
+        markdown: 'Mã hoặc ID thủ tục hành chính không được để trống.',
+        error: 'Empty identifier'
+      };
+    }
+
+    // 1. Phân giải UUID formalityId
+    let formalityId = '';
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(rawId)) {
+      formalityId = rawId;
+    } else {
+      // Tìm qua index local
+      const item = await this.findByCodeOrId(rawId);
+      if (item && item.id) {
+        formalityId = item.id;
+      } else {
+        // Fallback: Tra cứu qua API list-department-url-by-citizen để lấy formalityId
+        try {
+          const deptRes = await this.getDepartmentOnlineSubmission({ q: rawId, limit: 1 });
+          if (deptRes.rows && deptRes.rows.length > 0 && deptRes.rows[0].formalityId) {
+            formalityId = deptRes.rows[0].formalityId;
+          }
+        } catch {
+          // ignore error
+        }
+      }
+    }
+
+    if (!formalityId) {
+      return {
+        success: false,
+        id: rawId,
+        markdown: `Không tìm thấy mã định danh UUID hoặc thông tin thủ tục trên Cổng DVCQG cho từ khóa: **${rawId}**. Vui lòng kiểm tra lại mã TTHC (ví dụ: \`1.004884\`, \`6.006781\`, \`1.116788\`) hoặc UUID định danh.`,
+        error: 'Formality ID not found'
+      };
+    }
+
+    // 2. Gửi request live tới Cổng DVCQG API
+    const targetUrl = 'https://dichvucong.gov.vn/api/v1/configuring/formality/get-formality-by-citizen';
+    try {
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Accept': 'application/json, text/plain, */*',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
+        },
+        body: JSON.stringify({ id: formalityId }),
+        signal: AbortSignal.timeout(15000)
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          id: formalityId,
+          markdown: `Lỗi kết nối tới Cổng DVCQG API (HTTP ${response.status} ${response.statusText}).`,
+          error: `HTTP ${response.status}`
+        };
+      }
+
+      const resJson = (await response.json()) as {
+        code?: string;
+        message?: string;
+        data?: DVCQGLiveFormality;
+      };
+
+      if (resJson.code !== 'OK' || !resJson.data) {
+        return {
+          success: false,
+          id: formalityId,
+          markdown: `Cổng DVCQG phản hồi: ${resJson.message || 'Không tìm thấy dữ liệu thủ tục'} (Code: ${resJson.code || 'UNKNOWN'}).`,
+          error: resJson.message || 'Data not found'
+        };
+      }
+
+      const d = resJson.data;
+      const phanMuc = options?.phan_muc || 'tat_ca';
+      const dinhDang = options?.dinh_dang || 'markdown';
+      const dvcPageUrl = `https://dichvucong.gov.vn/p/home/dvc-chi-tiet-thu-tuc-hanh-chinh.html?ma_thu_tuc=${d.id}`;
+
+      // Xây dựng Markdown linh hoạt theo phan_muc
+      const lines: string[] = [];
+      const codeStr = d.code || d.codeNotation || rawId;
+      const nameStr = d.name || 'Thủ tục hành chính';
+
+      if (phanMuc === 'trinh_tu') {
+        lines.push(`## 🔄 Trình tự thực hiện: [${codeStr}] ${nameStr}`);
+        if (d.executionSteps && d.executionSteps.length > 0) {
+          d.executionSteps.forEach((step, idx) => {
+            if (step.name) lines.push(`### Bước ${idx + 1}: ${step.name}`);
+            lines.push(step.description || '(Không có mô tả chi tiết)');
+          });
+        } else {
+          lines.push('*Chưa có dữ liệu trình tự các bước thực hiện.*');
+        }
+      } else if (phanMuc === 'can_cu_phap_ly') {
+        lines.push(`## ⚖️ Căn cứ pháp lý: [${codeStr}] ${nameStr}`);
+        if (d.legalBasisesDetails && d.legalBasisesDetails.length > 0) {
+          d.legalBasisesDetails.forEach((lb, idx) => {
+            lines.push(`${idx + 1}. **${lb.code || ''}** - ${lb.name || ''}`);
+          });
+        } else {
+          lines.push('*Chưa có thông tin văn bản căn cứ pháp lý.*');
+        }
+      } else if (phanMuc === 'thoi_han' || phanMuc === 'chi_phi') {
+        lines.push(`## ⏱️ Thời hạn giải quyết & Phí, Lệ phí: [${codeStr}] ${nameStr}`);
+        if (d.executionMethods && d.executionMethods.length > 0) {
+          d.executionMethods.forEach(method => {
+            const mName = method.submissionMethod === 'ONLINE' ? 'Trực tuyến (Cổng DVC)' : 'Trực tiếp (Tại bộ phận Một cửa)';
+            lines.push(`### Hình thức: ${mName}`);
+            lines.push(`- **Thời hạn giải quyết**: ${method.processingTime || 'Theo quy định'} ${method.processingTimeUnit === 'WORKING_DAY' ? 'ngày làm việc' : 'ngày'}`);
+            if (method.description) lines.push(`- **Chi tiết thời hạn**: ${method.description}`);
+            if (method.fees && method.fees.length > 0) {
+              lines.push('- **Phí / Lệ phí**:');
+              method.fees.forEach(f => {
+                const valStr = f.value !== undefined ? `${f.value.toLocaleString('vi-VN')} ${f.currencyName || 'VNĐ'}` : 'Miễn phí';
+                lines.push(`  + **${valStr}**: ${f.description || ''}`);
+              });
+            } else {
+              lines.push('- **Phí / Lệ phí**: Miễn phí hoặc chưa quy định');
+            }
+          });
+        } else {
+          lines.push('*Chưa có thông tin thời hạn & mức thu phí.*');
+        }
+      } else if (phanMuc === 'ket_qua') {
+        lines.push(`## 📄 Kết quả thực hiện: [${codeStr}] ${nameStr}`);
+        if (d.resultsDetails && d.resultsDetails.length > 0) {
+          d.resultsDetails.forEach((res, idx) => {
+            lines.push(`${idx + 1}. **${res.name}** *(Mã: \`${res.code || 'N/A'}\`)*`);
+          });
+        } else {
+          lines.push('*Chưa có dữ liệu kết quả giải quyết.*');
+        }
+      } else if (phanMuc === 'yeu_cau_dieu_kien') {
+        lines.push(`## 📌 Yêu cầu, điều kiện thực hiện: [${codeStr}] ${nameStr}`);
+        lines.push(d.description || '*Thủ tục không quy định yêu cầu, điều kiện đặc biệt.*');
+      } else {
+        // 'tat_ca' - Render toàn diện
+        lines.push(`# 🔴 [LIVE DVCQG] ${nameStr}`);
+        lines.push(`> *Dữ liệu thời gian thực truy vấn trực tiếp từ Cổng Dịch vụ công Quốc gia*`);
+        lines.push('');
+        lines.push(`- **Mã TTHC**: \`${codeStr}\``);
+        lines.push(`- **UUID Hệ thống**: \`${d.id}\``);
+        if (d.decisionNo) lines.push(`- **Số Quyết định ban hành**: ${d.decisionNo}`);
+        if (d.departmentPromulgateName) lines.push(`- **Cơ quan ban hành**: **${d.departmentPromulgateName}**`);
+
+        // Cấp thực hiện
+        const capList: string[] = [];
+        if (d.isMinistry) capList.push('Cấp Bộ');
+        if (d.isProvince) capList.push('Cấp tỉnh');
+        if (d.isWard) capList.push('Cấp xã');
+        if (d.isOtherAgency) capList.push('Cơ quan khác');
+        if (capList.length > 0) lines.push(`- **Cấp thực hiện**: ${capList.join(', ')}`);
+
+        // Lĩnh vực
+        if (d.categoriesDetails && d.categoriesDetails.length > 0) {
+          const cats = d.categoriesDetails.map(c => c.name).filter(Boolean).join(', ');
+          if (cats) lines.push(`- **Lĩnh vực**: ${cats}`);
+        }
+
+        // Trạng thái quy trình
+        if (d.isFullProcess) lines.push(`- **Mức độ DVCTT**: 🟢 **Dịch vụ công trực tuyến Toàn trình**`);
+        lines.push(`- **Liên kết DVCQG**: [Xem thủ tục trên Cổng DVCQG](${dvcPageUrl})`);
+        lines.push('');
+
+        // 1. Cách thức thực hiện, Thời hạn & Lệ phí
+        if (d.executionMethods && d.executionMethods.length > 0) {
+          lines.push('---');
+          lines.push('## ⏱️ Cách thức thực hiện, Thời hạn & Lệ phí');
+          d.executionMethods.forEach(method => {
+            const mName = method.submissionMethod === 'ONLINE' ? '🌐 Trực tuyến (Cổng DVC)' : '🏛️ Trực tiếp (Tại bộ phận Một cửa)';
+            lines.push(`### ${mName}`);
+            lines.push(`- **Thời hạn giải quyết**: **${method.processingTime || 'Theo quy định'} ${method.processingTimeUnit === 'WORKING_DAY' ? 'ngày làm việc' : 'ngày'}**`);
+            if (method.description) lines.push(`- **Quy định thời hạn**: ${method.description}`);
+            if (method.fees && method.fees.length > 0) {
+              lines.push('- **Mức thu phí / lệ phí**:');
+              method.fees.forEach(f => {
+                const valStr = f.value !== undefined ? `${f.value.toLocaleString('vi-VN')} ${f.currencyName || 'VNĐ'}` : 'Miễn phí';
+                lines.push(`  + **${valStr}**: ${f.description || ''}`);
+              });
+            } else {
+              lines.push('- **Mức thu phí / lệ phí**: Miễn phí');
+            }
+          });
+          lines.push('');
+        }
+
+        // 2. Trình tự thực hiện
+        if (d.executionSteps && d.executionSteps.length > 0) {
+          lines.push('---');
+          lines.push('## 🔄 Trình tự thực hiện');
+          d.executionSteps.forEach((step, idx) => {
+            if (step.name) lines.push(`### Bước ${idx + 1}: ${step.name}`);
+            lines.push(step.description || '');
+            lines.push('');
+          });
+        }
+
+        // 3. Kết quả thực hiện
+        if (d.resultsDetails && d.resultsDetails.length > 0) {
+          lines.push('---');
+          lines.push('## 📄 Kết quả thực hiện');
+          d.resultsDetails.forEach((res, idx) => {
+            lines.push(`${idx + 1}. **${res.name}** *(Mã KQ: \`${res.code || 'N/A'}\`)*`);
+          });
+          lines.push('');
+        }
+
+        // 4. Yêu cầu, điều kiện thực hiện
+        if (d.description && d.description.trim()) {
+          lines.push('---');
+          lines.push('## 📌 Yêu cầu, điều kiện thực hiện');
+          lines.push(d.description);
+          lines.push('');
+        }
+
+        // 5. Căn cứ pháp lý
+        if (d.legalBasisesDetails && d.legalBasisesDetails.length > 0) {
+          lines.push('---');
+          lines.push(`## ⚖️ Căn cứ pháp lý (${d.legalBasisesDetails.length} văn bản)`);
+          d.legalBasisesDetails.forEach((lb, idx) => {
+            lines.push(`${idx + 1}. **${lb.code || ''}** - ${lb.name || ''}`);
+          });
+          lines.push('');
+        }
+      }
+
+      const finalMarkdown = lines.join('\n');
+      return {
+        success: true,
+        id: formalityId,
+        code: codeStr,
+        name: nameStr,
+        data: d,
+        markdown: dinhDang === 'json' ? JSON.stringify(d, null, 2) : finalMarkdown
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        success: false,
+        id: formalityId,
+        markdown: `Lỗi kết nối hoặc xử lý dữ liệu Live TTHC: ${msg}`,
+        error: msg
+      };
+    }
   }
 }
 

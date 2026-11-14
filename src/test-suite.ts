@@ -900,7 +900,47 @@ async function runTests() {
   console.assert(Boolean(htgqApiJson.markdown), 'Phải có thuộc tính markdown trong kết quả HTGQ');
   console.log('[PASS] REST API /api/tthc/htgq thực thi thành công trả về cấu trúc HTGQ chuẩn xác!\n');
 
-  console.log('[SUCCESS] TẤT CẢ 29 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
+  // TEST 30: Kiểm tra Tool MCP lay_thong_tin_tthc_live (API DVCQG Live get-formality-by-citizen)
+  console.log('--- TEST 30: Kiểm tra Tool lay_thong_tin_tthc_live (Live DVCQG API) ---');
+  const liveRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 301,
+      method: 'tools/call',
+      params: {
+        name: 'lay_thong_tin_tthc_live',
+        arguments: {
+          ma_hoac_id_tthc: '1.004884',
+          phan_muc: 'tat_ca',
+          dinh_dang: 'markdown'
+        }
+      }
+    })
+  });
+  const liveRpcRes = await netlifyHandler(liveRpcReq, {} as any);
+  console.assert(liveRpcRes.status === 200, `lay_thong_tin_tthc_live phải trả về 200, nhận: ${liveRpcRes.status}`);
+  const liveRpcData = (await liveRpcRes.json()) as any;
+  const liveMd = liveRpcData.result?.content?.[0]?.text || '';
+  console.assert(liveMd.includes('[LIVE DVCQG]') || liveMd.includes('1.004884'), 'Markdown phải chứa tiêu đề LIVE DVCQG');
+  console.assert(liveMd.includes('Trình tự thực hiện') || liveMd.includes('Căn cứ pháp lý'), 'Markdown phải chứa các phân mục chi tiết');
+  console.log('[PASS] Tool lay_thong_tin_tthc_live truy vấn thời gian thực từ Cổng DVCQG thành công!\n');
+
+  // TEST 31: Kiểm tra REST API endpoint /api/tthc/live
+  console.log('--- TEST 31: Kiểm tra REST API endpoint /api/tthc/live ---');
+  const liveApiReq = new Request('http://localhost:3000/api/tthc/live?id=1.004884&phan_muc=trinh_tu&api-key=secret_test_key_123', {
+    method: 'GET'
+  });
+  const liveApiRes = await netlifyHandler(liveApiReq, {} as any);
+  console.assert(liveApiRes.status === 200, `REST /api/tthc/live phải trả về 200, nhận: ${liveApiRes.status}`);
+  const liveApiJson = (await liveApiRes.json()) as any;
+  console.assert(liveApiJson.success === true, 'Kết quả API live phải có success: true');
+  console.assert(liveApiJson.id !== undefined, 'Kết quả API live phải có id');
+  console.assert(Boolean(liveApiJson.markdown), 'Kết quả API live phải có markdown');
+  console.log('[PASS] REST API /api/tthc/live thực thi thành công trả về dữ liệu Live chuẩn xác!\n');
+
+  console.log('[SUCCESS] TẤT CẢ 31 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
 }
 
 runTests().catch(err => {

@@ -248,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. Dynamic Tool Parameters Form Switching
   const paramGroups = {
+    lay_thong_tin_tthc_live: document.getElementById('params-lay_thong_tin_tthc_live'),
     kiem_tra_htgq_tthc: document.getElementById('params-kiem_tra_htgq_tthc'),
     tra_cuu_don_vi_tiep_nhan_truc_tuyen: document.getElementById('params-tra_cuu_don_vi_tiep_nhan_truc_tuyen'),
     tra_cuu_tthc_gia_lai: document.getElementById('params-tra_cuu_tthc_gia_lai'),
@@ -272,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (
+      selected === 'lay_thong_tin_tthc_live' ||
       selected === 'kiem_tra_htgq_tthc' ||
       selected === 'tra_cuu_theo_ma_tthc' ||
       selected === 'goi_y_thu_tuc_lien_quan' ||
@@ -427,6 +429,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Quick chips cho Lấy thông tin TTHC Live DVCQG
+  document.querySelectorAll('.btn-chip[data-fill-live-id]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const id = chip.dataset.fillLiveId;
+      const inputId = document.getElementById('input-live-id');
+      if (inputId && id !== undefined) inputId.value = id;
+    });
+  });
+
   // Quick chips cho Kiểm tra HTGQ
   document.querySelectorAll('.btn-chip[data-fill-htgq-id]').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -453,7 +464,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let args = customArgs || {};
     if (!customArgs) {
-      if (toolName === 'kiem_tra_htgq_tthc' || toolName === 'tra_cuu_htgq_tthc' || toolName === 'tthc_htgq') {
+      if (toolName === 'lay_thong_tin_tthc_live' || toolName === 'tra_cuu_tthc_live' || toolName === 'tthc_live_dvcqg') {
+        const id = document.getElementById('input-live-id')?.value.trim();
+        const phanMuc = document.getElementById('select-live-section')?.value || 'tat_ca';
+        const format = document.getElementById('select-live-format')?.value || 'markdown';
+        args = {
+          ma_hoac_id_tthc: id,
+          phan_muc: phanMuc,
+          dinh_dang: format
+        };
+      } else if (toolName === 'kiem_tra_htgq_tthc' || toolName === 'tra_cuu_htgq_tthc' || toolName === 'tthc_htgq') {
         const id = document.getElementById('input-htgq-id')?.value.trim();
         const prov = document.getElementById('input-htgq-province')?.value.trim();
         const format = document.getElementById('select-htgq-format')?.value || 'markdown';
