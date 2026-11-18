@@ -372,7 +372,10 @@ export default async (req: Request, _context: Context): Promise<Response> => {
   // 5. Health Check endpoint
   if (cleanPath === '/api/health' || cleanPath === '/health') {
     try {
-      const version = await tthcDataService.getVersion();
+      const [version, qdcbStats] = await Promise.all([
+        tthcDataService.getVersion(),
+        tthcDataService.getQDCBStats().catch(() => null)
+      ]);
       return jsonResponse({
         status: 'ok',
         service: 'MCP Server Tra Cứu TTHC DVCQG',
@@ -383,6 +386,9 @@ export default async (req: Request, _context: Context): Promise<Response> => {
         data_version: version,
         total_records: version.total_records,
         last_updated: version.last_updated,
+        qdcb_total_records: qdcbStats?.total_records ?? 0,
+        qdcb_last_updated: qdcbStats?.last_updated ?? null,
+        qdcb_monthly_new: qdcbStats?.monthly_new ?? null,
         active_connections: activeSessions.size,
         connections: activeSessions.size > 0 ? activeSessions.size : 1,
         authRequired: Boolean(process.env.API_KEY || process.env.MCP_API_KEY)

@@ -166,6 +166,23 @@ document.addEventListener('DOMContentLoaded', () => {
           totalCountEl.textContent = '---';
         }
 
+        // Hiển thị số lượng Quyết định công bố (QĐCB) trên header
+        const qdcbCountEl = document.getElementById('header-qdcb-count');
+        const qdcbBadgeEl = document.getElementById('header-qdcb-badge');
+        if (qdcbCountEl) {
+          const qdcbCount = data.qdcb_total_records;
+          if (qdcbCount && Number(qdcbCount) > 0) {
+            qdcbCountEl.textContent = Number(qdcbCount).toLocaleString('vi-VN');
+            if (qdcbBadgeEl) {
+              const monthlyTxt = data.qdcb_monthly_new ? ` (+${data.qdcb_monthly_new} mới trong tháng)` : '';
+              const updTxt = data.qdcb_last_updated ? ` • Cập nhật: ${new Date(data.qdcb_last_updated).toLocaleDateString('vi-VN')}` : '';
+              qdcbBadgeEl.title = `Tổng số ${Number(qdcbCount).toLocaleString('vi-VN')} Quyết định công bố${monthlyTxt}${updTxt}`;
+            }
+          } else {
+            qdcbCountEl.textContent = '---';
+          }
+        }
+
         // Lấy thời gian cập nhật dữ liệu dựa vào version url
         const rawUpdated =
           data.last_updated ||
