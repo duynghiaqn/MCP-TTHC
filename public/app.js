@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chi_tiet_quyet_dinh_cong_bo: document.getElementById('params-chi_tiet_quyet_dinh_cong_bo'),
     tra_cuu_tthc_gia_lai: document.getElementById('params-tra_cuu_tthc_gia_lai'),
     tra_cuu_tthc_noi_bo_gia_lai: document.getElementById('params-tra_cuu_tthc_noi_bo_gia_lai'),
-    phan_tich_bien_dong_gia_lai: document.getElementById('params-phan_tich_bien_dong_gia_lai'),
+    bien_dong_gia_lai: document.getElementById('params-bien_dong_gia_lai'),
     tra_cuu_tthc_noi_bo: document.getElementById('params-tra_cuu_tthc_noi_bo'),
     tra_cuu_theo_ma_tthc: document.getElementById('params-tra_cuu_theo_ma_tthc'),
     goi_y_thu_tuc_lien_quan: document.getElementById('params-goi_y_thu_tuc_lien_quan'),
@@ -549,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
           page,
           dinh_dang: 'markdown'
         };
-      } else if (toolName === 'phan_tich_bien_dong_gia_lai' || toolName === 'bien_dong_tthc_gia_lai') {
+      } else if (toolName === 'bien_dong_gia_lai' || toolName === 'phan_tich_bien_dong_gia_lai' || toolName === 'bien_dong_tthc_gia_lai') {
         const nhom = document.getElementById('select-bdgl-nhom')?.value || 'tat_ca';
         const loai = document.getElementById('select-bdgl-loai')?.value || 'tat_ca';
         const cap = document.getElementById('select-bdgl-cap')?.value || 'tat_ca';

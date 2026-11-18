@@ -969,7 +969,7 @@ export function createTTHCMcpServer(): McpServer {
   };
 
   server.tool(
-    'phan_tich_bien_dong_gia_lai',
+    'bien_dong_gia_lai',
     'Phân tích chi tiết biến động tăng/giảm Thủ tục hành chính tỉnh Gia Lai và Thủ tục hành chính Nội bộ tỉnh Gia Lai từ dữ liệu đối soát mới nhất (Crawler-TTHC/data-gl). Thống kê số lượng kỳ trước, hiện tại, số tăng (mới), số giảm (bãi bỏ), biến động ròng theo từng nhóm (Hành chính vs Nội bộ), cơ cấu cấp tỉnh/cấp xã, top lĩnh vực/cơ quan biến động và danh sách từng thủ tục cụ thể.',
     PhanTichBienDongGiaLaiSchema.shape,
     giaLaiChangeHandler
@@ -977,7 +977,7 @@ export function createTTHCMcpServer(): McpServer {
 
   server.tool(
     'bien_dong_tthc_gia_lai',
-    'Phân tích tăng/giảm Thủ tục hành chính Gia Lai & TTHC Nội bộ Gia Lai (alias của phan_tich_bien_dong_gia_lai).',
+    'Phân tích tăng/giảm Thủ tục hành chính Gia Lai & TTHC Nội bộ Gia Lai (alias của bien_dong_gia_lai).',
     PhanTichBienDongGiaLaiSchema.shape,
     giaLaiChangeHandler
   );
@@ -1190,11 +1190,11 @@ export async function executeJsonRpcMessage(message: unknown): Promise<unknown> 
         tthc_tinh_gia_lai: 'tra_cuu_tthc_gia_lai',
         tthc_gia_lai: 'tra_cuu_tthc_gia_lai',
         tra_cuu_tthc_gia_lai: 'tra_cuu_tthc_gia_lai',
-        phan_tich_bien_dong_gia_lai: 'phan_tich_bien_dong_gia_lai',
-        bien_dong_tthc_gia_lai: 'phan_tich_bien_dong_gia_lai',
-        bien_dong_gia_lai: 'phan_tich_bien_dong_gia_lai',
-        tang_giam_tthc_gia_lai: 'phan_tich_bien_dong_gia_lai',
-        phan_tich_tang_giam_gia_lai: 'phan_tich_bien_dong_gia_lai',
+        phan_tich_bien_dong_gia_lai: 'bien_dong_gia_lai',
+        bien_dong_tthc_gia_lai: 'bien_dong_gia_lai',
+        bien_dong_gia_lai: 'bien_dong_gia_lai',
+        tang_giam_tthc_gia_lai: 'bien_dong_gia_lai',
+        phan_tich_tang_giam_gia_lai: 'bien_dong_gia_lai',
         goi_y_thu_tuc_lien_quan: 'goi_y_thu_tuc_lien_quan',
         thu_tuc_lien_quan: 'goi_y_thu_tuc_lien_quan',
         goi_y_lien_quan: 'goi_y_thu_tuc_lien_quan',

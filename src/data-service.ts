@@ -4103,7 +4103,7 @@ class TTHCDataService {
 
     if (totalPages > 1) {
       lines.push(`\n---`);
-      lines.push(`*Để xem trang tiếp theo, gọi lại \`phan_tich_bien_dong_gia_lai\` với \`page: ${safePage + 1}\`.*`);
+      lines.push(`*Để xem trang tiếp theo, gọi lại \`bien_dong_gia_lai\` với \`page: ${safePage + 1}\`.*`);
     }
 
     return {

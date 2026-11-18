@@ -951,8 +951,8 @@ async function runTests() {
   console.assert(qdcbApiMonthlyRes.status === 200, 'GET /api/qdcb/monthly phải trả về 200');
   console.log('[PASS] Toàn bộ REST API /api/qdcb/* hoạt động chính xác 100%!\n');
 
-  // TEST 36: Kiểm tra Tool phan_tich_bien_dong_gia_lai & REST API /api/tthc/bien-dong-gia-lai
-  console.log('--- TEST 36: Kiểm tra Tool phan_tich_bien_dong_gia_lai (Tăng/Giảm Gia Lai & Nội bộ Gia Lai) ---');
+  // TEST 36: Kiểm tra Tool bien_dong_gia_lai & REST API /api/tthc/bien-dong-gia-lai
+  console.log('--- TEST 36: Kiểm tra Tool bien_dong_gia_lai (Tăng/Giảm Gia Lai & Nội bộ Gia Lai) ---');
   const bdglRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -961,7 +961,7 @@ async function runTests() {
       id: 361,
       method: 'tools/call',
       params: {
-        name: 'phan_tich_bien_dong_gia_lai',
+        name: 'bien_dong_gia_lai',
         arguments: {
           nhom: 'noi_bo',
           loai_bien_dong: 'tat_ca',
@@ -971,7 +971,7 @@ async function runTests() {
     })
   });
   const bdglRpcRes = await netlifyHandler(bdglRpcReq, {} as any);
-  console.assert(bdglRpcRes.status === 200, `phan_tich_bien_dong_gia_lai phải trả về 200, nhận: ${bdglRpcRes.status}`);
+  console.assert(bdglRpcRes.status === 200, `bien_dong_gia_lai phải trả về 200, nhận: ${bdglRpcRes.status}`);
   const bdglJsonText = ((await bdglRpcRes.json()) as any).result?.content?.[0]?.text || '{}';
   const bdglParsed = JSON.parse(bdglJsonText);
   console.assert(bdglParsed.overview && typeof bdglParsed.overview.current_total === 'number', 'Phải có overview.current_total');
