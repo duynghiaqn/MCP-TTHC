@@ -1358,7 +1358,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Tương tác Collapsible Sections & Quick Nav Chips
   document.addEventListener('click', (e) => {
-    // 0. Mở Modal Chi tiết QĐCB khi click vào label QĐCB
+    // 0a. Quay lại lịch sử điều hướng trong Modal
+    const backBtn = e.target.closest('.modal-back-btn');
+    if (backBtn) {
+      const prev = modalNavHistory.pop();
+      if (prev) {
+        if (prev.type === 'qdcb') openQDCBModal(prev.id, true);
+        else if (prev.type === 'tthc') openDetailModal(prev.id, true);
+      }
+      return;
+    }
+
+    // 0b. Mở Modal Chi tiết QĐCB khi click vào label QĐCB
     const qdcbBtn = e.target.closest('.btn-open-qdcb-modal');
     if (qdcbBtn) {
       const qdId = qdcbBtn.dataset.qdcbId;
@@ -1402,8 +1413,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  let modalNavHistory = [];
+  let currentModalState = null;
+
+  function getModalBackBtnHtml() {
+    if (modalNavHistory.length === 0) return '';
+    return `<button type="button" class="modal-back-btn" title="Quay lại mục trước đó"><i class="bi bi-arrow-left"></i> Quay lại</button>`;
+  }
+
   // Modal open detail
-  async function openDetailModal(code) {
+  async function openDetailModal(code, isBack = false) {
+    if (!isBack && modal.style.display === 'flex' && currentModalState && !(currentModalState.type === 'tthc' && currentModalState.id === code)) {
+      modalNavHistory.push(currentModalState);
+    }
+    currentModalState = { type: 'tthc', id: code };
+
     modal.style.display = 'flex';
     currentModalMarkdown = '';
     currentModalCode = code;
@@ -1422,6 +1446,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : '';
 
     modalTitle.innerHTML = `
+      ${getModalBackBtnHtml()}
       <span>Chi tiết TTHC: ${escapeHtml(code)}</span>
       <a href="${initialUrl}" id="modal-dvc-link-btn" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs modal-dvc-badge" title="Mở trang nộp hồ sơ trên Cổng Dịch vụ công Quốc gia" style="${initialUrl ? '' : 'display: none;'}">
         <i class="bi bi-send-fill"></i> Nộp hồ sơ
@@ -1499,6 +1524,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (mucDoPill || qdcbPill) {
         modalTitle.innerHTML = `
+          ${getModalBackBtnHtml()}
           <span>Chi tiết TTHC: ${escapeHtml(code)}</span>
           ${mucDoPill}
           ${qdcbPill}
@@ -1524,8 +1550,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Mở Modal Chi tiết QĐCB chuẩn cấu trúc Cổng Dịch vụ công Quốc gia
-  async function openQDCBModal(idOrSoQd) {
+  async function openQDCBModal(idOrSoQd, isBack = false) {
     if (!idOrSoQd) return;
+    if (!isBack && modal.style.display === 'flex' && currentModalState && !(currentModalState.type === 'qdcb' && currentModalState.id === idOrSoQd)) {
+      modalNavHistory.push(currentModalState);
+    }
+    currentModalState = { type: 'qdcb', id: idOrSoQd };
+
     modal.style.display = 'flex';
     currentModalMarkdown = '';
     currentModalCode = `QDCB-${idOrSoQd}`;
@@ -1538,7 +1569,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnModalCopyMd) btnModalCopyMd.style.display = 'none';
     if (btnModalDownloadMd) btnModalDownloadMd.style.display = 'none';
 
-    modalTitle.innerHTML = `<span>Quyết định công bố: ${escapeHtml(idOrSoQd)}</span>`;
+    modalTitle.innerHTML = `${getModalBackBtnHtml()}<span>Quyết định công bố: ${escapeHtml(idOrSoQd)}</span>`;
     modalBody.innerHTML = `
       <div class="loader-container">
         <div class="spinner"></div>
@@ -1572,6 +1603,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const loaiLabel = detail.loai_quyet_dinh_label || 'Tiêu chuẩn';
 
       modalTitle.innerHTML = `
+        ${getModalBackBtnHtml()}
         <span>Quyết định công bố: ${escapeHtml(soQd)}</span>
         <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
           <i class="bi bi-check-circle-fill"></i> ${escapeHtml(trangThaiLabel)}
@@ -1599,6 +1631,66 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
+      // Gắn sự kiện tìm kiếm nhanh bên trong bảng TTHC của QĐCB
+      const searchInput = modalBody.querySelector('.qdcb-table-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          const q = searchInput.value.trim().toLowerCase();
+          modalBody.querySelectorAll('.qdcb-table tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = !q || text.includes(q) ? '' : 'none';
+          });
+        });
+      }
+
+      // Gắn sự kiện copy nhanh Số Quyết định
+      modalBody.querySelectorAll('.qdcb-copy-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const val = btn.dataset.copyVal;
+          if (!val) return;
+          await navigator.clipboard.writeText(val);
+          showToast(`Đã sao chép: ${val}`);
+        });
+      });
+
+      // Gắn sự kiện Export CSV danh sách TTHC trong QĐCB
+      const btnExportCsv = modalBody.querySelector('.btn-export-qdcb-csv');
+      if (btnExportCsv) {
+        btnExportCsv.addEventListener('click', () => {
+          const rows = [['Nhóm', 'Mã TTHC', 'Tên thủ tục hành chính', 'Ngày hiệu lực', 'Trạng thái', 'URL']];
+          const tthc = detail.tthc_kem_theo || {};
+          const pushRows = (label, grp) => {
+            (grp?.items || []).forEach(it => {
+              rows.push([
+                label,
+                it.ma_tthc || '',
+                (it.ten_tthc || '').replace(/"/g, '""'),
+                it.ngay_hieu_luc || '',
+                it.trang_thai === 'INACTIVE' ? 'Đã bãi bỏ' : 'Đang công bố',
+                it.url || ''
+              ]);
+            });
+          };
+          pushRows('Công khai mới', tthc.cong_khai_moi);
+          pushRows('Sửa đổi, bổ sung', tthc.sua_doi_bo_sung);
+          pushRows('Thay thế', tthc.thay_the);
+          pushRows('Điều chỉnh', tthc.dieu_chinh);
+          pushRows('Bãi bỏ', tthc.bai_bo);
+
+          const csvContent = '\uFEFF' + rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `QDCB-${soQd.replace(/[/\\?%*:|"<>]/g, '-')}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast(`Đã xuất danh sách TTHC của ${soQd} ra CSV!`);
+        });
+      }
+
       // Gắn sự kiện bấm vào Mã TTHC hoặc nút Xem chi tiết -> mở Modal Chi tiết TTHC
       modalBody.querySelectorAll('.btn-qdcb-open-tthc').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1624,8 +1716,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const ngayHieuLuc = detail.ngay_hieu_luc || ngayQd;
     const ngayCongBo = detail.ngay_cong_bo || 'Chưa cập nhật';
     const files = Array.isArray(detail.tep_dinh_kem) ? detail.tep_dinh_kem : [];
+    const noteText = detail.thong_tin_chi_tiet?.note || '';
 
     const tthc = detail.tthc_kem_theo || {};
+    const cntMoi = tthc.cong_khai_moi?.count ?? (tthc.cong_khai_moi?.items?.length || 0);
+    const cntSua = tthc.sua_doi_bo_sung?.count ?? (tthc.sua_doi_bo_sung?.items?.length || 0);
+    const cntBaiBo = tthc.bai_bo?.count ?? (tthc.bai_bo?.items?.length || 0);
+    const cntThayThe = tthc.thay_the?.count ?? (tthc.thay_the?.items?.length || 0);
+    const cntDieuChinh = tthc.dieu_chinh?.count ?? (tthc.dieu_chinh?.items?.length || 0);
+    const totalTthc = cntMoi + cntSua + cntBaiBo + cntThayThe + cntDieuChinh;
+
     const groups = [
       { key: 'cong_khai_moi', label: 'Công khai mới', icon: 'bi-plus-circle-fill', data: tthc.cong_khai_moi },
       { key: 'sua_doi_bo_sung', label: 'Sửa đổi, bổ sung', icon: 'bi-pencil-square', data: tthc.sua_doi_bo_sung },
@@ -1647,13 +1747,26 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
+    // 1b. Thanh thống kê tổng quan
+    html += `
+      <div class="qdcb-stats-row">
+        <span class="qdcb-stat-pill"><i class="bi bi-collection-fill"></i> Tổng TTHC: <strong>${totalTthc}</strong></span>
+        <span class="qdcb-stat-pill qdcb-stat-new"><i class="bi bi-plus-circle-fill"></i> Công khai mới: <strong>${cntMoi}</strong></span>
+        <span class="qdcb-stat-pill qdcb-stat-edit"><i class="bi bi-pencil-square"></i> Sửa đổi/BS: <strong>${cntSua}</strong></span>
+        <span class="qdcb-stat-pill qdcb-stat-drop"><i class="bi bi-slash-circle-fill"></i> Bãi bỏ: <strong>${cntBaiBo}</strong></span>
+      </div>
+    `;
+
     // 2. Thẻ Thông tin chung (chuẩn lưới DVCQG)
     html += `
       <div class="qdcb-info-card">
         <div class="qdcb-info-grid">
           <div class="qdcb-info-cell">
             <span class="qdcb-info-label">Số quyết định</span>
-            <span class="qdcb-info-val" style="color:#fbbf24; font-family:var(--font-mono);">${escapeHtml(soQd)}</span>
+            <span class="qdcb-info-val" style="color:#fbbf24; font-family:var(--font-mono); display:flex; align-items:center; gap:6px;">
+              <span>${escapeHtml(soQd)}</span>
+              <button type="button" class="qdcb-copy-btn" data-copy-val="${escapeHtml(soQd)}" title="Sao chép số quyết định"><i class="bi bi-clipboard"></i></button>
+            </span>
           </div>
           <div class="qdcb-info-cell">
             <span class="qdcb-info-label">Cơ quan ban hành</span>
@@ -1676,6 +1789,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="qdcb-info-val">${escapeHtml(ngayCongBo)}</span>
           </div>
         </div>
+        ${noteText ? `
+          <div class="qdcb-note-box mt-2">
+            <i class="bi bi-info-circle-fill"></i>
+            <div><strong>Ghi chú:</strong> ${escapeHtml(noteText)}</div>
+          </div>
+        ` : ''}
         ${files.length > 0 ? `
           <div class="qdcb-attachments-bar">
             <span class="qdcb-info-label" style="width:100%; margin-bottom:2px;">Tệp đính kèm:</span>
@@ -1685,7 +1804,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
-    // 3. Khối Danh sách TTHC thuộc Quyết định (Tabs + Data Table chuẩn DVCQG)
+    // 3. Khối Danh sách TTHC thuộc Quyết định (Tabs + Toolbar tìm kiếm + Data Table chuẩn DVCQG)
     html += '<div class="qdcb-tabs-section">';
     html += '<div class="qdcb-tabs-bar">';
     groups.forEach(g => {
@@ -1700,6 +1819,20 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     });
     html += '</div>';
+
+    if (totalTthc > 0) {
+      html += `
+        <div class="qdcb-table-toolbar">
+          <div class="qdcb-table-search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" class="qdcb-table-search" placeholder="Tìm nhanh theo Mã TTHC hoặc Tên thủ tục trong quyết định này...">
+          </div>
+          <button type="button" class="btn btn-secondary btn-xs btn-export-qdcb-csv" title="Xuất danh sách TTHC trong quyết định ra file CSV (Excel)">
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i> Xuất CSV (${totalTthc})
+          </button>
+        </div>
+      `;
+    }
 
     groups.forEach(g => {
       const items = g.data?.items || [];
@@ -1818,9 +1951,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnCloseModal.addEventListener('click', () => {
     modal.style.display = 'none';
+    modalNavHistory = [];
+    currentModalState = null;
   });
   modal.addEventListener('click', e => {
-    if (e.target === modal) modal.style.display = 'none';
+    if (e.target === modal) {
+      modal.style.display = 'none';
+      modalNavHistory = [];
+      currentModalState = null;
+    }
   });
 
   // 6. View Switcher (Rendered / Markdown / JSON)
