@@ -161,7 +161,6 @@
           <div class="tool-selector-group">
             <label class="input-label" for="select-mcp-tool">Công cụ MCP:</label>
             <select id="select-mcp-tool" class="form-select">
-              <option value="lay_thong_tin_tthc_live" style="font-weight: 600; color: #ef4444;">lay_thong_tin_tthc_live (Lấy TTHC Live DVCQG)</option>
               <option value="tra_cuu_tthc_gia_lai" style="font-weight: 600; color: #38bdf8;">tra_cuu_tthc_gia_lai (TTHC Tỉnh Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo_gia_lai" style="font-weight: 600; color: #e879f9;">tra_cuu_tthc_noi_bo_gia_lai (TTHC Nội Bộ Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo" style="font-weight: 600; color: #c084fc;">tra_cuu_tthc_noi_bo (TTHC Nội Bộ)</option>
@@ -513,41 +512,6 @@
               </div>
             </div>
 
-            <!-- Tool: lay_thong_tin_tthc_live -->
-            <div class="param-group" id="params-lay_thong_tin_tthc_live" style="display: none;">
-              <label class="input-label" for="input-live-id">Mã TTHC hoặc UUID định danh thủ tục (*):</label>
-              <input type="text" id="input-live-id" class="form-input" placeholder="Ví dụ: 1.004884, 6.006781, 1.116788 hoặc UUID" value="1.004884">
-              
-              <div class="form-row mt-2">
-                <div class="form-col">
-                  <label class="input-label" for="select-live-section">Phân mục dữ liệu Live:</label>
-                  <select id="select-live-section" class="form-select">
-                    <option value="tat_ca" selected>Toàn bộ thông tin Live (Tổng quan, quy trình, phí, pháp lý)</option>
-                    <option value="trinh_tu">Trình tự các bước thực hiện (executionSteps)</option>
-                    <option value="thoi_han">Thời hạn giải quyết & Phí/Lệ phí (executionMethods)</option>
-                    <option value="can_cu_phap_ly">Văn bản căn cứ pháp lý (legalBasisesDetails)</option>
-                    <option value="ket_qua">Kết quả thực hiện (resultsDetails)</option>
-                    <option value="yeu_cau_dieu_kien">Yêu cầu, điều kiện thực hiện</option>
-                  </select>
-                </div>
-                <div class="form-col">
-                  <label class="input-label" for="select-live-format">Định dạng kết quả:</label>
-                  <select id="select-live-format" class="form-select">
-                    <option value="markdown" selected>Markdown (Trực quan chi tiết)</option>
-                    <option value="json">JSON Live (Cấu trúc gốc DVCQG)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="quick-chips">
-                <span class="chip-label">Mẫu tra cứu Live:</span>
-                <button type="button" class="btn-chip" data-fill-live-id="1.004884">1.004884 (Đăng ký lại khai sinh)</button>
-                <button type="button" class="btn-chip" data-fill-live-id="1.116788">1.116788 (Đăng ký thường trú)</button>
-                <button type="button" class="btn-chip" data-fill-live-id="2.000806">2.000806 (Kết hôn yếu tố nước ngoài)</button>
-                <button type="button" class="btn-chip" data-fill-live-id="6.006781">6.006781 (Đăng kiểm viên tàu biển)</button>
-              </div>
-            </div>
-
             <!-- Pagination options -->
             <div class="pagination-row" id="common-pagination-controls">
               <div class="pagination-field">
@@ -690,67 +654,6 @@
         </div>
 
         <div class="tools-grid" id="tools-doc-grid">
-          
-          <!-- TOOL: lay_thong_tin_tthc_live -->
-          <div class="tool-doc-card" data-tool="lay_thong_tin_tthc_live" data-category="tra_cuu chuyen_sau dvctt" style="--card-glow: rgba(239, 68, 68, 0.25); --accent-line: #ef4444;">
-            <div class="tool-card-accent"></div>
-            <div class="tool-doc-header">
-              <div class="tool-header-left">
-                <div class="tool-icon-box" style="color: #ef4444; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.28);">
-                  <i class="bi bi-broadcast"></i>
-                </div>
-                <div class="tool-title-col">
-                  <div class="tool-name-row">
-                    <span class="tool-name">lay_thong_tin_tthc_live</span>
-                    <button type="button" class="btn-copy-tool-name" data-copy="lay_thong_tin_tthc_live" title="Sao chép tên công cụ">
-                      <i class="bi bi-clipboard"></i>
-                    </button>
-                  </div>
-                  <div class="tool-alias-wrap">
-                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
-                    <span class="alias-code">tra_cuu_tthc_live</span>
-                    <span class="alias-code">tthc_live_dvcqg</span>
-                  </div>
-                </div>
-              </div>
-              <span class="tool-header-badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);"><i class="bi bi-dot"></i> LIVE DVCQG</span>
-            </div>
-            <div class="tool-doc-body">
-              <p class="tool-description">
-                Lấy dữ liệu cấu hình và chi tiết Thủ tục Hành chính <strong>thời gian thực (Live)</strong> trực tiếp từ Cổng Dịch vụ công Quốc gia (<code>POST https://dichvucong.gov.vn/api/v1/configuring/formality/get-formality-by-citizen</code>). Trích xuất toàn văn tên, mã số, quyết định, cơ quan ban hành, cấp thực hiện, quy trình các bước, thời hạn, phí/lệ phí, căn cứ pháp lý, kết quả và điều kiện thực hiện.
-              </p>
-              <div class="tool-schema-meta">
-                <span class="schema-badge req"><i class="bi bi-asterisk"></i> ma_hoac_id_tthc: string</span>
-                <span class="schema-badge opt"><i class="bi bi-sliders"></i> phan_muc: tat_ca | trinh_tu | can_cu_phap_ly | thoi_han | ket_qua | yeu_cau_dieu_kien</span>
-                <span class="schema-badge opt"><i class="bi bi-filetype-raw"></i> dinh_dang: markdown | json</span>
-              </div>
-              <div class="tool-json-example">
-                <div class="example-header">
-                  <span>Ví dụ gọi JSON-RPC:</span>
-                  <button type="button" class="btn-copy-code" data-copy='{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"lay_thong_tin_tthc_live","arguments":{"ma_hoac_id_tthc":"1.004884","phan_muc":"tat_ca","dinh_dang":"markdown"}}}'><i class="bi bi-clipboard"></i> Copy</button>
-                </div>
-                <pre><code>{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "lay_thong_tin_tthc_live",
-    "arguments": {
-      "ma_hoac_id_tthc": "1.004884",
-      "phan_muc": "tat_ca",
-      "dinh_dang": "markdown"
-    }
-  }
-}</code></pre>
-              </div>
-            </div>
-            <div class="tool-card-footer">
-              <span class="endpoint-hint"><i class="bi bi-hdd-network"></i> GET /api/tthc/live</span>
-              <button type="button" class="btn-try-tool" data-goto-tool="lay_thong_tin_tthc_live" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.35);">
-                <i class="bi bi-play-circle-fill"></i> Thử ngay
-              </button>
-            </div>
-          </div>
           
           <!-- TOOL 1: tra_cuu_tthc_gia_lai -->
           <div class="tool-doc-card" data-tool="tra_cuu_tthc_gia_lai" data-category="chuyen_sau" style="--card-glow: rgba(56, 189, 248, 0.25); --accent-line: #38bdf8;">

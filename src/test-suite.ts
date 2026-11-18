@@ -858,32 +858,16 @@ async function runTests() {
   console.assert(Boolean(htgqApiJson.markdown), 'Phải có thuộc tính markdown trong kết quả HTGQ');
   console.log('[PASS] REST API /api/tthc/htgq thực thi thành công trả về cấu trúc HTGQ chuẩn xác!\n');
 
-  // TEST 30: Kiểm tra Tool MCP lay_thong_tin_tthc_live (API DVCQG Live get-formality-by-citizen)
-  console.log('--- TEST 30: Kiểm tra Tool lay_thong_tin_tthc_live (Live DVCQG API) ---');
-  const liveRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 301,
-      method: 'tools/call',
-      params: {
-        name: 'lay_thong_tin_tthc_live',
-        arguments: {
-          ma_hoac_id_tthc: '1.004884',
-          phan_muc: 'tat_ca',
-          dinh_dang: 'markdown'
-        }
-      }
-    })
-  });
-  const liveRpcRes = await netlifyHandler(liveRpcReq, {} as any);
-  console.assert(liveRpcRes.status === 200, `lay_thong_tin_tthc_live phải trả về 200, nhận: ${liveRpcRes.status}`);
-  const liveRpcData = (await liveRpcRes.json()) as any;
-  const liveMd = liveRpcData.result?.content?.[0]?.text || '';
-  console.assert(liveMd.includes('[LIVE DVCQG]') || liveMd.includes('1.004884'), 'Markdown phải chứa tiêu đề LIVE DVCQG');
-  console.assert(liveMd.includes('Trình tự thực hiện') || liveMd.includes('Căn cứ pháp lý'), 'Markdown phải chứa các phân mục chi tiết');
-  console.log('[PASS] Tool lay_thong_tin_tthc_live truy vấn thời gian thực từ Cổng DVCQG thành công!\n');
+  // TEST 30: Kiểm tra xác nhận đã loại bỏ Tool MCP lay_thong_tin_tthc_live & kiểm tra backend getFormalityLive
+  console.log('--- TEST 30: Kiểm tra loại bỏ Tool lay_thong_tin_tthc_live & kiểm tra backend getFormalityLive ---');
+  // 1. Kiểm tra lay_thong_tin_tthc_live không còn trong danh sách tool
+  console.assert(!toolNames.includes('lay_thong_tin_tthc_live'), 'lay_thong_tin_tthc_live không được còn trong tools/list');
+
+  // 2. Kiểm tra nghiệp vụ DataService (phục vụ cho REST API /api/tthc/live)
+  const liveResult = await tthcDataService.getFormalityLive('1.004884', { phan_muc: 'tat_ca', dinh_dang: 'markdown' });
+  console.assert(liveResult.markdown.includes('[LIVE DVCQG]') || liveResult.markdown.includes('1.004884'), 'Markdown phải chứa tiêu đề LIVE DVCQG');
+  console.assert(liveResult.markdown.includes('Trình tự thực hiện') || liveResult.markdown.includes('Căn cứ pháp lý'), 'Markdown phải chứa các phân mục chi tiết');
+  console.log('[PASS] Đã loại bỏ tool lay_thong_tin_tthc_live khỏi MCP tools và kiểm thử backend service thành công!\n');
 
   // TEST 31: Kiểm tra REST API endpoint /api/tthc/live
   console.log('--- TEST 31: Kiểm tra REST API endpoint /api/tthc/live ---');

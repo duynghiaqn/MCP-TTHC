@@ -248,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. Dynamic Tool Parameters Form Switching
   const paramGroups = {
-    lay_thong_tin_tthc_live: document.getElementById('params-lay_thong_tin_tthc_live'),
     tra_cuu_tthc_gia_lai: document.getElementById('params-tra_cuu_tthc_gia_lai'),
     tra_cuu_tthc_noi_bo_gia_lai: document.getElementById('params-tra_cuu_tthc_noi_bo_gia_lai'),
     tra_cuu_tthc_noi_bo: document.getElementById('params-tra_cuu_tthc_noi_bo'),
@@ -271,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (
-      selected === 'lay_thong_tin_tthc_live' ||
       selected === 'tra_cuu_theo_ma_tthc' ||
       selected === 'goi_y_thu_tuc_lien_quan' ||
       selected === 'thong_tin_mcp_server'
@@ -411,15 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Quick chips cho Lấy thông tin TTHC Live DVCQG
-  document.querySelectorAll('.btn-chip[data-fill-live-id]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const id = chip.dataset.fillLiveId;
-      const inputId = document.getElementById('input-live-id');
-      if (inputId && id !== undefined) inputId.value = id;
-    });
-  });
-
   // 5. Tool Execution via MCP JSON-RPC
   toolForm.addEventListener('submit', async e => {
     e.preventDefault();
@@ -434,16 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let args = customArgs || {};
     if (!customArgs) {
-      if (toolName === 'lay_thong_tin_tthc_live' || toolName === 'tra_cuu_tthc_live' || toolName === 'tthc_live_dvcqg') {
-        const id = document.getElementById('input-live-id')?.value.trim();
-        const phanMuc = document.getElementById('select-live-section')?.value || 'tat_ca';
-        const format = document.getElementById('select-live-format')?.value || 'markdown';
-        args = {
-          ma_hoac_id_tthc: id,
-          phan_muc: phanMuc,
-          dinh_dang: format
-        };
-      } else if (toolName === 'tra_cuu_tthc_gia_lai' || toolName === 'tthc_gia_lai') {
+      if (toolName === 'tra_cuu_tthc_gia_lai' || toolName === 'tthc_gia_lai') {
         const kw = document.getElementById('input-gialai-keyword')?.value.trim();
         const code = document.getElementById('input-gialai-code')?.value.trim();
         const cap = document.getElementById('select-gialai-cap')?.value;
