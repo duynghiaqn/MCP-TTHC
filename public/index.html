@@ -180,6 +180,8 @@
                 Tỉnh Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo_gia_lai" style="font-weight: 600; color: #e879f9;">
                 tra_cuu_tthc_noi_bo_gia_lai (TTHC Nội Bộ Gia Lai)</option>
+              <option value="phan_tich_bien_dong_gia_lai" style="font-weight: 600; color: #fbbf24;">
+                phan_tich_bien_dong_gia_lai (Phân tích Tăng/Giảm Gia Lai & Nội Bộ)</option>
               <option value="tra_cuu_tthc_noi_bo" style="font-weight: 600; color: #c084fc;">tra_cuu_tthc_noi_bo (TTHC
                 Nội Bộ)</option>
               <option value="tra_cuu_theo_ma_tthc">tra_cuu_theo_ma_tthc (Chi tiết chuyên sâu)</option>
@@ -547,6 +549,51 @@
                 <button type="button" class="btn-chip" data-fill-nbgl-cap="cap_xa">Cấp xã</button>
                 <button type="button" class="btn-chip" data-fill-nbgl-code="5.003972">Mã 5.003972</button>
                 <button type="button" class="btn-chip" data-fill-nbgl-code="5.003971">Mã 5.003971</button>
+              </div>
+            </div>
+
+            <!-- Tool: phan_tich_bien_dong_gia_lai -->
+            <div class="param-group" id="params-phan_tich_bien_dong_gia_lai" style="display: none;">
+              <div class="form-row">
+                <div class="form-col">
+                  <label class="input-label" for="select-bdgl-nhom">Nhóm thủ tục Gia Lai:</label>
+                  <select id="select-bdgl-nhom" class="form-select">
+                    <option value="tat_ca" selected>Tất cả (TTHC + Nội bộ Gia Lai)</option>
+                    <option value="hanh_chinh">Chỉ TTHC Hành chính Gia Lai</option>
+                    <option value="noi_bo">Chỉ TTHC Nội bộ Gia Lai</option>
+                  </select>
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-bdgl-loai">Loại biến động:</label>
+                  <select id="select-bdgl-loai" class="form-select">
+                    <option value="tat_ca" selected>Tất cả (Tăng + Giảm + Sửa đổi)</option>
+                    <option value="tang">Chỉ Tăng (Bổ sung / Công bố mới)</option>
+                    <option value="giam">Chỉ Giảm (Loại bỏ / Bãi bỏ)</option>
+                    <option value="sua_doi">Chỉ Sửa đổi / Cập nhật</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="select-bdgl-cap">Cấp thực hiện:</label>
+                  <select id="select-bdgl-cap" class="form-select">
+                    <option value="tat_ca" selected>Tất cả cấp (Tỉnh & Xã)</option>
+                    <option value="cap_tinh">Cấp tỉnh</option>
+                    <option value="cap_xa">Cấp xã</option>
+                  </select>
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="input-bdgl-keyword">Từ khóa lọc (tùy chọn):</label>
+                  <input type="text" id="input-bdgl-keyword" class="form-input"
+                    placeholder="Ví dụ: khoáng sản, đất đai, 5.004046...">
+                </div>
+              </div>
+              <div class="quick-chips">
+                <span class="chip-label">Phân tích nhanh:</span>
+                <button type="button" class="btn-chip" data-fill-bdgl-nhom="tat_ca" data-fill-bdgl-loai="tat_ca">Toàn tỉnh Gia Lai</button>
+                <button type="button" class="btn-chip" data-fill-bdgl-nhom="hanh_chinh" data-fill-bdgl-loai="tang">TTHC Gia Lai Tăng</button>
+                <button type="button" class="btn-chip" data-fill-bdgl-nhom="hanh_chinh" data-fill-bdgl-loai="giam">TTHC Gia Lai Giảm</button>
+                <button type="button" class="btn-chip" data-fill-bdgl-nhom="noi_bo" data-fill-bdgl-loai="tat_ca">TTHC Nội bộ Gia Lai</button>
               </div>
             </div>
 

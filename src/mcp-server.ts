@@ -514,6 +514,45 @@ export const TraCuuTthcNoiBoGiaLaiSchema = z.object({
     .describe('Định dạng kết quả trả về: "markdown" (văn bản đẹp) hoặc "json" (dữ liệu có cấu trúc cho AI agent)')
 });
 
+export const PhanTichBienDongGiaLaiSchema = z.object({
+  nhom: z
+    .enum(['tat_ca', 'hanh_chinh', 'noi_bo'])
+    .optional()
+    .default('tat_ca')
+    .describe(
+      'Nhóm thủ tục cần phân tích tăng/giảm: "tat_ca" (cả TTHC và Nội bộ Gia Lai), "hanh_chinh" (chỉ TTHC Hành chính Gia Lai), "noi_bo" (chỉ TTHC Nội bộ Gia Lai)'
+    ),
+  loai_bien_dong: z
+    .enum(['tat_ca', 'tang', 'giam', 'sua_doi'])
+    .optional()
+    .default('tat_ca')
+    .describe(
+      'Loại biến động cần xem: "tat_ca" (toàn bộ tăng/giảm/sửa đổi), "tang" (chỉ thủ tục tăng/công bố mới), "giam" (chỉ thủ tục giảm/bãi bỏ), "sua_doi" (chỉ thủ tục sửa đổi)'
+    ),
+  cap: z
+    .enum(['tat_ca', 'cap_tinh', 'cap_xa'])
+    .optional()
+    .default('tat_ca')
+    .describe('Lọc theo cấp thực hiện tại Gia Lai: "tat_ca", "cap_tinh" (Cấp tỉnh), "cap_xa" (Cấp xã)'),
+  tu_khoa: z
+    .string()
+    .optional()
+    .describe('Từ khóa lọc thêm theo tên thủ tục, mã TTHC, lĩnh vực hoặc cơ quan thực hiện/ban hành'),
+  limit: z
+    .number()
+    .min(1)
+    .max(50)
+    .optional()
+    .default(20)
+    .describe('Số lượng thủ tục biến động hiển thị mỗi trang (1-50, mặc định: 20)'),
+  page: z.number().min(1).optional().default(1).describe('Số trang kết quả (mặc định: 1)'),
+  dinh_dang: z
+    .enum(['markdown', 'json'])
+    .optional()
+    .default('markdown')
+    .describe('Định dạng trả về: "markdown" (báo cáo phân tích bảng biểu) hoặc "json" (dữ liệu có cấu trúc)')
+});
+
 export const ThongTinMcpServerSchema = z.object({});
 
 export const LamMoiDuLieuSchema = z.object({
@@ -901,6 +940,43 @@ export function createTTHCMcpServer(): McpServer {
     noiBoGiaLaiHandler
   );
 
+  // TOOL: Phân tích biến động tăng/giảm TTHC Gia Lai & TTHC Nội bộ Gia Lai
+  const giaLaiChangeHandler = async (params: z.infer<typeof PhanTichBienDongGiaLaiSchema>) => {
+    const result = await tthcDataService.analyzeGiaLaiChanges(params);
+    if (params.dinh_dang === 'json') {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2)
+          }
+        ]
+      };
+    }
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: result.markdown
+        }
+      ]
+    };
+  };
+
+  server.tool(
+    'phan_tich_bien_dong_gia_lai',
+    'Phân tích chi tiết biến động tăng/giảm Thủ tục hành chính tỉnh Gia Lai và Thủ tục hành chính Nội bộ tỉnh Gia Lai từ dữ liệu đối soát mới nhất (Crawler-TTHC/data-gl). Thống kê số lượng kỳ trước, hiện tại, số tăng (mới), số giảm (bãi bỏ), biến động ròng theo từng nhóm (Hành chính vs Nội bộ), cơ cấu cấp tỉnh/cấp xã, top lĩnh vực/cơ quan biến động và danh sách từng thủ tục cụ thể.',
+    PhanTichBienDongGiaLaiSchema.shape,
+    giaLaiChangeHandler
+  );
+
+  server.tool(
+    'bien_dong_tthc_gia_lai',
+    'Phân tích tăng/giảm Thủ tục hành chính Gia Lai & TTHC Nội bộ Gia Lai (alias của phan_tich_bien_dong_gia_lai).',
+    PhanTichBienDongGiaLaiSchema.shape,
+    giaLaiChangeHandler
+  );
+
   // TOOL: Tra cứu Quyết định công bố (QĐCB)
   const qdcbSearchHandler = async (params: z.infer<typeof TraCuuQdcbSchema>) => {
     const result = await tthcDataService.searchQDCB({
@@ -1109,6 +1185,11 @@ export async function executeJsonRpcMessage(message: unknown): Promise<unknown> 
         tthc_tinh_gia_lai: 'tra_cuu_tthc_gia_lai',
         tthc_gia_lai: 'tra_cuu_tthc_gia_lai',
         tra_cuu_tthc_gia_lai: 'tra_cuu_tthc_gia_lai',
+        phan_tich_bien_dong_gia_lai: 'phan_tich_bien_dong_gia_lai',
+        bien_dong_tthc_gia_lai: 'phan_tich_bien_dong_gia_lai',
+        bien_dong_gia_lai: 'phan_tich_bien_dong_gia_lai',
+        tang_giam_tthc_gia_lai: 'phan_tich_bien_dong_gia_lai',
+        phan_tich_tang_giam_gia_lai: 'phan_tich_bien_dong_gia_lai',
         goi_y_thu_tuc_lien_quan: 'goi_y_thu_tuc_lien_quan',
         thu_tuc_lien_quan: 'goi_y_thu_tuc_lien_quan',
         goi_y_lien_quan: 'goi_y_thu_tuc_lien_quan',

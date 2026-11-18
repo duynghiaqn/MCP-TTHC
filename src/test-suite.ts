@@ -781,7 +781,7 @@ async function runTests() {
   const dvcttListData = (await dvcttListRes.json()) as any;
   const toolNames = (dvcttListData.result?.tools || []).map((t: any) => t.name);
   console.assert(!toolNames.includes('tra_cuu_don_vi_tiep_nhan_truc_tuyen'), 'tra_cuu_don_vi_tiep_nhan_truc_tuyen không được còn trong tools/list');
-  
+
   // Kiểm tra backend DataService vẫn phục vụ chuẩn xác cho REST API và chi tiết TTHC
   const dvcttBackendRes = await tthcDataService.getDepartmentOnlineSubmission({ q: '1.004884', provinceCode: '52', limit: 2, dinh_dang: 'markdown' });
   console.assert(dvcttBackendRes.markdown.includes('CƠ QUAN TIẾP NHẬN HỒ SƠ TRỰC TUYẾN') || dvcttBackendRes.markdown.includes('DVC'), 'Phải chứa tiêu đề DVCTT');
@@ -951,7 +951,41 @@ async function runTests() {
   console.assert(qdcbApiMonthlyRes.status === 200, 'GET /api/qdcb/monthly phải trả về 200');
   console.log('[PASS] Toàn bộ REST API /api/qdcb/* hoạt động chính xác 100%!\n');
 
-  console.log('[SUCCESS] TẤT CẢ 35 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
+  // TEST 36: Kiểm tra Tool phan_tich_bien_dong_gia_lai & REST API /api/tthc/bien-dong-gia-lai
+  console.log('--- TEST 36: Kiểm tra Tool phan_tich_bien_dong_gia_lai (Tăng/Giảm Gia Lai & Nội bộ Gia Lai) ---');
+  const bdglRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 361,
+      method: 'tools/call',
+      params: {
+        name: 'phan_tich_bien_dong_gia_lai',
+        arguments: {
+          nhom: 'noi_bo',
+          loai_bien_dong: 'tat_ca',
+          dinh_dang: 'json'
+        }
+      }
+    })
+  });
+  const bdglRpcRes = await netlifyHandler(bdglRpcReq, {} as any);
+  console.assert(bdglRpcRes.status === 200, `phan_tich_bien_dong_gia_lai phải trả về 200, nhận: ${bdglRpcRes.status}`);
+  const bdglJsonText = ((await bdglRpcRes.json()) as any).result?.content?.[0]?.text || '{}';
+  const bdglParsed = JSON.parse(bdglJsonText);
+  console.assert(bdglParsed.overview && typeof bdglParsed.overview.current_total === 'number', 'Phải có overview.current_total');
+  console.assert(bdglParsed.filtered_counts && typeof bdglParsed.filtered_counts.added === 'number', 'Phải có filtered_counts');
+  console.assert(bdglParsed.markdown.includes('TTHC Nội bộ Gia Lai'), 'Markdown phải có bảng phân tích TTHC Nội bộ Gia Lai');
+
+  const bdglApiRes = await netlifyHandler(
+    new Request('http://localhost:3000/api/tthc/bien-dong-gia-lai?nhom=hanh_chinh&loai_bien_dong=tang&api-key=secret_test_key_123'),
+    {} as any
+  );
+  console.assert(bdglApiRes.status === 200, 'GET /api/tthc/bien-dong-gia-lai phải trả về 200');
+  console.log('[PASS] Tool phan_tich_bien_dong_gia_lai & REST API /api/tthc/bien-dong-gia-lai hoạt động chính xác!\n');
+
+  console.log('[SUCCESS] TẤT CẢ 36 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
 }
 
 runTests().catch(err => {

@@ -398,6 +398,96 @@ export interface QDCBSearchResult {
   markdown: string;
 }
 
+export interface GiaLaiChangeItem {
+  id: string;
+  code: string;
+  name: string;
+  category?: string;
+  agency?: string;
+  isProvince?: boolean;
+  isWard?: boolean;
+  formalityType?: string;
+  executingAgencies?: string;
+  departmentPromulgate?: string;
+  nhom_thu_tuc?: string;
+  is_noi_bo?: boolean;
+  url?: string;
+  level_label?: string;
+  change_type?: 'added' | 'removed' | 'modified';
+  changes?: Record<string, unknown>;
+}
+
+export interface GiaLaiCompareSummaryGroup {
+  current_total: number;
+  added_count: number;
+  removed_count: number;
+  modified_count: number;
+}
+
+export interface GiaLaiCompareReport {
+  compared_at: string;
+  filter?: string;
+  summary: {
+    previous_total: number;
+    current_total: number;
+    net_change: number;
+    added_count: number;
+    removed_count: number;
+    modified_count: number;
+    administrative: GiaLaiCompareSummaryGroup;
+    internal: GiaLaiCompareSummaryGroup;
+    level_breakdown?: {
+      province_only: number;
+      ward_only: number;
+      both_province_and_ward: number;
+      province_total: number;
+      province_admin: number;
+      province_internal: number;
+      ward_total: number;
+      ward_admin: number;
+      ward_internal: number;
+    };
+  };
+  added: GiaLaiChangeItem[];
+  removed: GiaLaiChangeItem[];
+  modified: GiaLaiChangeItem[];
+}
+
+export interface GiaLaiChangeAnalysisParams {
+  nhom?: 'tat_ca' | 'hanh_chinh' | 'noi_bo';
+  loai_bien_dong?: 'tat_ca' | 'tang' | 'giam' | 'sua_doi';
+  cap?: 'tat_ca' | 'cap_tinh' | 'cap_xa';
+  tu_khoa?: string;
+  limit?: number;
+  page?: number;
+  dinh_dang?: 'markdown' | 'json';
+}
+
+export interface GiaLaiChangeAnalysisResult {
+  compared_at: string;
+  filter_applied: {
+    nhom: string;
+    loai_bien_dong: string;
+    cap: string;
+    tu_khoa?: string;
+  };
+  overview: GiaLaiCompareReport['summary'];
+  filtered_counts: {
+    added: number;
+    removed: number;
+    modified: number;
+    net_change: number;
+    total_events: number;
+  };
+  top_categories: Array<{ name: string; added: number; removed: number; modified: number }>;
+  top_agencies: Array<{ name: string; added: number; removed: number; modified: number }>;
+  page: number;
+  limit: number;
+  total_pages: number;
+  items: GiaLaiChangeItem[];
+  markdown: string;
+}
+
 
 
 

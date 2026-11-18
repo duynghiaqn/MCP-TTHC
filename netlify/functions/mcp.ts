@@ -791,6 +791,28 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       return jsonResponse(result, 200, true);
     }
 
+    // GET / POST /api/tthc/bien-dong-gia-lai (Phân tích tăng/giảm TTHC Gia Lai & TTHC Nội bộ Gia Lai)
+    if (subPath === '/bien-dong-gia-lai' || subPath === '/gia-lai/bien-dong') {
+      const nhom = (getParam('nhom') || 'tat_ca') as 'tat_ca' | 'hanh_chinh' | 'noi_bo';
+      const loai_bien_dong = (getParam('loai_bien_dong') || 'tat_ca') as 'tat_ca' | 'tang' | 'giam' | 'sua_doi';
+      const cap = (getParam('cap') || 'tat_ca') as 'tat_ca' | 'cap_tinh' | 'cap_xa';
+      const tu_khoa = getParam('tu_khoa') || getParam('q') || undefined;
+      const page = parseInt(getParam('page') || '1', 10);
+      const limit = parseInt(getParam('limit') || '20', 10);
+      const dinh_dang = (getParam('dinh_dang') || 'markdown') as 'markdown' | 'json';
+
+      const result = await tthcDataService.analyzeGiaLaiChanges({
+        nhom,
+        loai_bien_dong,
+        cap,
+        tu_khoa,
+        page,
+        limit,
+        dinh_dang
+      });
+      return jsonResponse(result, 200, true);
+    }
+
     // GET / POST /api/tthc/dvctt hoặc /api/tthc/don-vi-truc-tuyen (Tra cứu đơn vị tiếp nhận trực tuyến & Mức độ DVCTT từ Cổng DVCQG)
     if (subPath === '/dvctt' || subPath === '/don-vi-truc-tuyen' || subPath === '/donvitructuyen') {
       const q = getParam('q') || getParam('tu_khoa') || getParam('ma_tthc') || undefined;

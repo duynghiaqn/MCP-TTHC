@@ -19,7 +19,11 @@ import type {
   QDCBItem,
   QDCBDetail,
   QDCBSearchParams,
-  QDCBSearchResult
+  QDCBSearchResult,
+  GiaLaiChangeItem,
+  GiaLaiCompareReport,
+  GiaLaiChangeAnalysisParams,
+  GiaLaiChangeAnalysisResult
 } from './types.js';
 
 export const PROVINCE_MAP: Record<string, string> = {
@@ -359,6 +363,21 @@ export const BACKUP_QDCB_VERSION_URLS = [
   'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/version.json',
   'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/qdcb/version.json'
 ];
+
+export const BACKUP_GIALAI_COMPARE_REPORT_URLS = [
+  'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@data-gl/compare_report.json',
+  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@data-gl/compare_report.json',
+  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/data-gl/compare_report.json'
+];
+
+export function getGiaLaiCompareReportUrls(): string[] {
+  const envUrl = process.env.GIALAI_COMPARE_REPORT_URL;
+  const urls: string[] = [
+    ...(envUrl ? [envUrl] : []),
+    ...BACKUP_GIALAI_COMPARE_REPORT_URLS
+  ];
+  return Array.from(new Set(urls.filter(Boolean)));
+}
 
 export function getQdcbIndexUrls(): string[] {
   const envUrl = process.env.QDCB_INDEX_URL;
@@ -3765,6 +3784,251 @@ class TTHCDataService {
     };
     this.qdcbVersionCache = { data: fallback, timestamp: now };
     return fallback;
+  }
+
+  private giaLaiCompareCache: { data: GiaLaiCompareReport; timestamp: number } | null = null;
+
+  /**
+   * Tải báo cáo so sánh biến động tăng/giảm TTHC & TTHC Nội bộ tỉnh Gia Lai
+   * Nguồn: https://github.com/duynghiaqn/Crawler-TTHC/tree/data-gl (compare_report.json)
+   */
+  async loadGiaLaiCompareReport(forceRefresh = false): Promise<GiaLaiCompareReport> {
+    const now = Date.now();
+    if (!forceRefresh && this.giaLaiCompareCache && now - this.giaLaiCompareCache.timestamp < 5 * 60 * 1000) {
+      return this.giaLaiCompareCache.data;
+    }
+
+    const urls = getGiaLaiCompareReportUrls();
+    let lastError: unknown = null;
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} từ ${url}`);
+        }
+        const json = (await res.json()) as GiaLaiCompareReport;
+        if (!json || !json.summary) {
+          throw new Error(`Dữ liệu compare_report.json không hợp lệ từ ${url}`);
+        }
+        this.giaLaiCompareCache = { data: json, timestamp: now };
+        return json;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (this.giaLaiCompareCache) {
+      return this.giaLaiCompareCache.data;
+    }
+
+    throw new Error(
+      `Không thể tải báo cáo biến động TTHC Gia Lai (compare_report.json): ${lastError instanceof Error ? lastError.message : String(lastError)}`
+    );
+  }
+
+  /**
+   * Phân tích biến động tăng/giảm Thủ tục hành chính Gia Lai & Thủ tục nội bộ Gia Lai
+   */
+  async analyzeGiaLaiChanges(params: GiaLaiChangeAnalysisParams = {}): Promise<GiaLaiChangeAnalysisResult> {
+    const report = await this.loadGiaLaiCompareReport();
+    const nhom = params.nhom || 'tat_ca';
+    const loaiBienDong = params.loai_bien_dong || 'tat_ca';
+    const cap = params.cap || 'tat_ca';
+    const tuKhoa = (params.tu_khoa || '').trim();
+    const limit = Math.min(Math.max(params.limit || 20, 1), 50);
+    const page = Math.max(params.page || 1, 1);
+
+    const addedAll: GiaLaiChangeItem[] = (report.added || []).map(x => ({ ...x, change_type: 'added' }));
+    const removedAll: GiaLaiChangeItem[] = (report.removed || []).map(x => ({ ...x, change_type: 'removed' }));
+    const modifiedAll: GiaLaiChangeItem[] = (report.modified || []).map(x => ({ ...x, change_type: 'modified' }));
+
+    const matchesGroupAndLevel = (item: GiaLaiChangeItem): boolean => {
+      const isNoiBo = Boolean(item.is_noi_bo) || (item.nhom_thu_tuc || '').toLowerCase().includes('nội bộ');
+      if (nhom === 'noi_bo' && !isNoiBo) return false;
+      if (nhom === 'hanh_chinh' && isNoiBo) return false;
+
+      if (cap === 'cap_tinh' && !item.isProvince) return false;
+      if (cap === 'cap_xa' && !item.isWard) return false;
+
+      if (tuKhoa) {
+        const kwNorm = removeVietnameseTones(tuKhoa);
+        const haystack = removeVietnameseTones(
+          `${item.code || ''} ${item.name || ''} ${item.category || ''} ${item.agency || ''} ${item.executingAgencies || ''} ${item.departmentPromulgate || ''}`
+        );
+        if (!haystack.includes(kwNorm)) return false;
+      }
+      return true;
+    };
+
+    const addedFiltered = addedAll.filter(matchesGroupAndLevel);
+    const removedFiltered = removedAll.filter(matchesGroupAndLevel);
+    const modifiedFiltered = modifiedAll.filter(matchesGroupAndLevel);
+
+    let combined: GiaLaiChangeItem[] = [];
+    if (loaiBienDong === 'tang') {
+      combined = addedFiltered;
+    } else if (loaiBienDong === 'giam') {
+      combined = removedFiltered;
+    } else if (loaiBienDong === 'sua_doi') {
+      combined = modifiedFiltered;
+    } else {
+      combined = [...addedFiltered, ...removedFiltered, ...modifiedFiltered];
+    }
+
+    // Thống kê top lĩnh vực và cơ quan có biến động
+    const catStats = new Map<string, { added: number; removed: number; modified: number }>();
+    const agencyStats = new Map<string, { added: number; removed: number; modified: number }>();
+    const bump = (map: Map<string, { added: number; removed: number; modified: number }>, key: string, type: 'added' | 'removed' | 'modified') => {
+      const cleanKey = (key || 'Chưa phân loại').trim() || 'Chưa phân loại';
+      const cur = map.get(cleanKey) || { added: 0, removed: 0, modified: 0 };
+      cur[type] += 1;
+      map.set(cleanKey, cur);
+    };
+
+    for (const item of [...addedFiltered, ...removedFiltered, ...modifiedFiltered]) {
+      const t = item.change_type || 'added';
+      bump(catStats, item.category || 'Chưa phân loại', t);
+      bump(agencyStats, item.executingAgencies || item.agency || item.departmentPromulgate || 'Chưa rõ cơ quan', t);
+    }
+
+    const toSortedArray = (map: Map<string, { added: number; removed: number; modified: number }>) =>
+      Array.from(map.entries())
+        .map(([name, counts]) => ({ name, ...counts }))
+        .sort((a, b) => (b.added + b.removed + b.modified) - (a.added + a.removed + a.modified))
+        .slice(0, 8);
+
+    const topCategories = toSortedArray(catStats);
+    const topAgencies = toSortedArray(agencyStats);
+
+    const totalEvents = combined.length;
+    const totalPages = Math.max(1, Math.ceil(totalEvents / limit));
+    const safePage = Math.min(page, totalPages);
+    const startIdx = (safePage - 1) * limit;
+    const pagedItems = combined.slice(startIdx, startIdx + limit);
+
+    const filteredCounts = {
+      added: addedFiltered.length,
+      removed: removedFiltered.length,
+      modified: modifiedFiltered.length,
+      net_change: addedFiltered.length - removedFiltered.length,
+      total_events: addedFiltered.length + removedFiltered.length + modifiedFiltered.length
+    };
+
+    const s = report.summary;
+    const adminNet = (s.administrative?.added_count || 0) - (s.administrative?.removed_count || 0);
+    const internalNet = (s.internal?.added_count || 0) - (s.internal?.removed_count || 0);
+    const fmtNet = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+
+    const lines: string[] = [];
+    lines.push(`# 📊 Phân tích Biến động Tăng/Giảm TTHC Tỉnh Gia Lai`);
+    lines.push(`*Thời điểm đối soát dữ liệu: \`${report.compared_at}\` (Nguồn: \`Crawler-TTHC/data-gl\`)*\n`);
+
+    lines.push(`## 1. Tổng quan Biến động Toàn tỉnh Gia Lai`);
+    lines.push(`| Nhóm thủ tục | Kỳ trước | Hiện tại | Tăng (Mới) | Giảm (Bỏ) | Sửa đổi | Biến động ròng |`);
+    lines.push(`|---|---:|---:|---:|---:|---:|---:|`);
+    lines.push(
+      `| **Tổng hợp toàn tỉnh** | ${s.previous_total} | **${s.current_total}** | +${s.added_count} | -${s.removed_count} | ${s.modified_count} | **${fmtNet(s.net_change)}** |`
+    );
+    if (s.administrative) {
+      const adminPrev = s.administrative.current_total - adminNet;
+      lines.push(
+        `| **TTHC Hành chính Gia Lai** | ${adminPrev} | **${s.administrative.current_total}** | +${s.administrative.added_count} | -${s.administrative.removed_count} | ${s.administrative.modified_count} | **${fmtNet(adminNet)}** |`
+      );
+    }
+    if (s.internal) {
+      const intPrev = s.internal.current_total - internalNet;
+      lines.push(
+        `| **TTHC Nội bộ Gia Lai** | ${intPrev} | **${s.internal.current_total}** | +${s.internal.added_count} | -${s.internal.removed_count} | ${s.internal.modified_count} | **${fmtNet(internalNet)}** |`
+      );
+    }
+    lines.push('');
+
+    if (s.level_breakdown) {
+      const lb = s.level_breakdown;
+      lines.push(`## 2. Cơ cấu theo Cấp thực hiện hiện tại`);
+      lines.push(
+        `- **Cấp tỉnh**: **${lb.province_total}** thủ tục (*${lb.province_admin}* TTHC + *${lb.province_internal}* Nội bộ; riêng cấp tỉnh: ${lb.province_only})`
+      );
+      lines.push(
+        `- **Cấp xã**: **${lb.ward_total}** thủ tục (*${lb.ward_admin}** TTHC + *${lb.ward_internal}* Nội bộ; riêng cấp xã: ${lb.ward_only})`
+      );
+      lines.push(`- **Liên thông cả Cấp tỉnh & Cấp xã**: **${lb.both_province_and_ward}** thủ tục\n`);
+    }
+
+    const nhomLabel = nhom === 'noi_bo' ? 'Chỉ TTHC Nội bộ Gia Lai' : nhom === 'hanh_chinh' ? 'Chỉ TTHC Hành chính Gia Lai' : 'Tất cả (TTHC + Nội bộ)';
+    const loaiLabel = loaiBienDong === 'tang' ? 'Chỉ Tăng (Mới)' : loaiBienDong === 'giam' ? 'Chỉ Giảm (Bãi bỏ)' : loaiBienDong === 'sua_doi' ? 'Chỉ Sửa đổi' : 'Tất cả biến động';
+    const capLabel = cap === 'cap_tinh' ? 'Cấp tỉnh' : cap === 'cap_xa' ? 'Cấp xã' : 'Tất cả cấp';
+
+    lines.push(`## 3. Kết quả Lọc & Phân tích Chi tiết`);
+    lines.push(
+      `> **Bộ lọc**: Nhóm: \`${nhomLabel}\` | Loại: \`${loaiLabel}\` | Cấp: \`${capLabel}\`${tuKhoa ? ` | Từ khóa: \`${tuKhoa}\`` : ''}`
+    );
+    lines.push(
+      `> **Kết quả lọc**: Tăng **+${filteredCounts.added}** | Giảm **-${filteredCounts.removed}** | Sửa đổi **${filteredCounts.modified}** | Ròng **${fmtNet(filteredCounts.net_change)}**\n`
+    );
+
+    if (topCategories.length > 0) {
+      lines.push(`### 📈 Lĩnh vực có biến động nổi bật`);
+      topCategories.forEach(c => {
+        lines.push(`- **${c.name}**: +${c.added} tăng / -${c.removed} giảm${c.modified ? ` / ${c.modified} sửa đổi` : ''}`);
+      });
+      lines.push('');
+    }
+
+    if (topAgencies.length > 0) {
+      lines.push(`### 🏛️ Cơ quan ban hành / thực hiện có biến động`);
+      topAgencies.forEach(a => {
+        lines.push(`- **${a.name}**: +${a.added} tăng / -${a.removed} giảm${a.modified ? ` / ${a.modified} sửa đổi` : ''}`);
+      });
+      lines.push('');
+    }
+
+    lines.push(`### 📋 Danh sách Thủ tục Biến động (Trang ${safePage}/${totalPages}, tổng ${totalEvents} mục)`);
+    if (pagedItems.length === 0) {
+      lines.push(`*Không có thủ tục biến động nào khớp với bộ lọc hiện tại.*`);
+    } else {
+      pagedItems.forEach((item, idx) => {
+        const stt = startIdx + idx + 1;
+        const badge = item.change_type === 'added' ? '🟢 TĂNG (Mới)' : item.change_type === 'removed' ? '🔴 GIẢM (Bỏ)' : '🟡 SỬA ĐỔI';
+        const isNB = Boolean(item.is_noi_bo) || (item.nhom_thu_tuc || '').toLowerCase().includes('nội bộ');
+        const groupTag = isNB ? 'TTHC Nội bộ' : 'TTHC Hành chính';
+        lines.push(`${stt}. ${badge} **[${item.code}] ${item.name}**`);
+        lines.push(
+          `   - **Phân nhóm**: ${groupTag} | **Cấp**: ${item.level_label || 'Chưa rõ'} | **Lĩnh vực**: ${item.category || 'Chưa rõ'}`
+        );
+        lines.push(
+          `   - **Cơ quan thực hiện**: ${item.executingAgencies || item.agency || 'Chưa rõ'} | **Cơ quan ban hành**: ${item.departmentPromulgate || 'Chưa rõ'}`
+        );
+        if (item.url) {
+          lines.push(`   - **Link DVCQG**: [Xem chi tiết](${item.url})`);
+        }
+      });
+    }
+
+    if (totalPages > 1) {
+      lines.push(`\n---`);
+      lines.push(`*Để xem trang tiếp theo, gọi lại \`phan_tich_bien_dong_gia_lai\` với \`page: ${safePage + 1}\`.*`);
+    }
+
+    return {
+      compared_at: report.compared_at,
+      filter_applied: {
+        nhom,
+        loai_bien_dong: loaiBienDong,
+        cap,
+        ...(tuKhoa ? { tu_khoa: tuKhoa } : {})
+      },
+      overview: s,
+      filtered_counts: filteredCounts,
+      top_categories: topCategories,
+      top_agencies: topAgencies,
+      page: safePage,
+      limit,
+      total_pages: totalPages,
+      items: pagedItems,
+      markdown: lines.join('\n')
+    };
   }
 }
 
