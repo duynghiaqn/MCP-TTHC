@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
   <title>MCP Server Tra Cứu TTHC DVCQG | Netlify</title>
   <meta name="description"
     content="Model Context Protocol (MCP) Server tra cứu Thủ tục Hành chính Việt Nam, hỗ trợ tìm kiếm theo mã, tên, cấp thực hiện và lĩnh vực.">
@@ -60,6 +61,7 @@
 </head>
 
 <body>
+  <div class="bg-grid" aria-hidden="true"></div>
   <div class="bg-glow bg-glow-1"></div>
   <div class="bg-glow bg-glow-2"></div>
   <div class="bg-glow bg-glow-3"></div>
@@ -75,8 +77,9 @@
         <div>
           <div class="site-title-row">
             <h1 class="site-title">MCP TTHC DVCQG</h1>
+            <span class="gateway-pill"><i class="bi bi-hdd-network-fill" aria-hidden="true"></i> Gateway</span>
             <span class="version-tag-badge" id="app-version-badge">v1.1.0</span>
-            <span class="author-badge"><i class="bi bi-code-slash"></i> Dev by KynChou</span>
+            <span class="author-badge"><i class="bi bi-code-slash" aria-hidden="true"></i> Dev by KynChou</span>
           </div>
           <p class="site-subtitle">Tra cứu & Trích xuất Dữ liệu Thủ tục Hành chính DVCQG</p>
         </div>
@@ -92,10 +95,9 @@
           <i class="bi bi-collection-fill"></i>
           <span id="header-total-count">...</span> thủ tục
         </div>
-        <div class="record-count-badge" id="header-qdcb-badge"
-          title="Số lượng Quyết định công bố (QĐCB) từ Crawler-TTHC/qdcb"
-          style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); color: #fbbf24;">
-          <i class="bi bi-file-earmark-check-fill"></i>
+        <div class="record-count-badge header-qdcb-badge" id="header-qdcb-badge"
+          title="Số lượng Quyết định công bố (QĐCB) từ Crawler-TTHC/qdcb">
+          <i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i>
           <span id="header-qdcb-count">...</span> QĐCB
         </div>
         <div class="record-count-badge header-updated-badge" id="header-updated-badge"
