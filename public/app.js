@@ -783,6 +783,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function formatInlineMd(str) {
+    if (!str) return '';
+    let safe = escapeHtml(String(str));
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="dvc-direct-link">$1</a>');
+    safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return safe;
+  }
+
   function renderGiaLaiChangesViewport(markdownText) {
     const lines = markdownText.split('\n');
     let html = `
