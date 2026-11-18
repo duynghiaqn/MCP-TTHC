@@ -387,6 +387,7 @@ export interface QDCBSearchParams {
   limit?: number;
   page?: number;
   dinh_dang?: 'markdown' | 'json';
+  lam_moi?: boolean;
 }
 
 export interface QDCBSearchResult {
@@ -461,6 +462,7 @@ export interface GiaLaiChangeAnalysisParams {
   limit?: number;
   page?: number;
   dinh_dang?: 'markdown' | 'json';
+  lam_moi?: boolean;
 }
 
 export interface GiaLaiChangeAnalysisResult {

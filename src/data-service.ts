@@ -365,9 +365,9 @@ export const BACKUP_QDCB_VERSION_URLS = [
 ];
 
 export const BACKUP_GIALAI_COMPARE_REPORT_URLS = [
+  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/data-gl/compare_report.json',
   'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@data-gl/compare_report.json',
-  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@data-gl/compare_report.json',
-  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/data-gl/compare_report.json'
+  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@data-gl/compare_report.json'
 ];
 
 export function getGiaLaiCompareReportUrls(): string[] {
@@ -560,6 +560,7 @@ class TTHCDataService {
       );
       const newIndex = await this.loadIndex(true);
       this.detailCache.clear();
+      this.giaLaiCompareCache = null;
       this.versionInfo = {
         last_updated: remoteVersionStr,
         total_records: newIndex.length
@@ -3786,94 +3787,188 @@ class TTHCDataService {
     return fallback;
   }
 
-  private giaLaiCompareCache: { data: GiaLaiCompareReport; timestamp: number } | null = null;
+  private giaLaiCompareCache: {
+    data: GiaLaiCompareReport;
+    timestamp: number;
+    etag?: string;
+    preparedAdded: Array<GiaLaiChangeItem & { _isNoiBo: boolean; _searchHaystack: string }>;
+    preparedRemoved: Array<GiaLaiChangeItem & { _isNoiBo: boolean; _searchHaystack: string }>;
+    preparedModified: Array<GiaLaiChangeItem & { _isNoiBo: boolean; _searchHaystack: string }>;
+  } | null = null;
+  private giaLaiCompareInflight: Promise<NonNullable<TTHCDataService['giaLaiCompareCache']>> | null = null;
+
+  private buildGiaLaiPreparedCache(
+    json: GiaLaiCompareReport & {
+      added_items?: GiaLaiChangeItem[];
+      removed_items?: GiaLaiChangeItem[];
+      modified_items?: GiaLaiChangeItem[];
+    },
+    etag?: string
+  ): NonNullable<TTHCDataService['giaLaiCompareCache']> {
+    const prepareList = (
+      items: GiaLaiChangeItem[] | undefined,
+      changeType: 'added' | 'removed' | 'modified'
+    ) =>
+      (items || []).map(x => {
+        const isNoiBo = Boolean(x.is_noi_bo) || (x.nhom_thu_tuc || '').toLowerCase().includes('nội bộ');
+        const haystack = removeVietnameseTones(
+          `${x.code || ''} ${x.name || ''} ${x.category || ''} ${x.agency || ''} ${x.executingAgencies || ''} ${x.departmentPromulgate || ''}`
+        );
+        return {
+          ...x,
+          change_type: changeType,
+          _isNoiBo: isNoiBo,
+          _searchHaystack: haystack
+        };
+      });
+
+    const rawAdded = json.added || json.added_items || [];
+    const rawRemoved = json.removed || json.removed_items || [];
+    const rawModified = json.modified || json.modified_items || [];
+
+    return {
+      data: {
+        ...json,
+        added: rawAdded,
+        removed: rawRemoved,
+        modified: rawModified
+      },
+      timestamp: Date.now(),
+      etag,
+      preparedAdded: prepareList(rawAdded, 'added'),
+      preparedRemoved: prepareList(rawRemoved, 'removed'),
+      preparedModified: prepareList(rawModified, 'modified')
+    };
+  }
+
+  private async loadGiaLaiCompareCacheEntry(
+    forceRefresh = false
+  ): Promise<NonNullable<TTHCDataService['giaLaiCompareCache']>> {
+    const now = Date.now();
+    if (!forceRefresh && this.giaLaiCompareCache && now - this.giaLaiCompareCache.timestamp < 5 * 60 * 1000) {
+      return this.giaLaiCompareCache;
+    }
+
+    // Single-flight deduplication: gom các request đồng thời dùng chung 1 lần fetch
+    if (this.giaLaiCompareInflight) {
+      return this.giaLaiCompareInflight;
+    }
+
+    this.giaLaiCompareInflight = (async () => {
+      const urls = getGiaLaiCompareReportUrls();
+      let lastError: unknown = null;
+
+      for (const url of urls) {
+        try {
+          const headers: Record<string, string> = {};
+          if (!forceRefresh && this.giaLaiCompareCache?.etag && url.includes('raw.githubusercontent.com')) {
+            headers['If-None-Match'] = this.giaLaiCompareCache.etag;
+          }
+
+          const res = await fetch(url, {
+            headers,
+            cache: 'no-store',
+            signal: AbortSignal.timeout(8000)
+          });
+
+          if (res.status === 304 && this.giaLaiCompareCache) {
+            this.giaLaiCompareCache.timestamp = Date.now();
+            return this.giaLaiCompareCache;
+          }
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status} từ ${url}`);
+          }
+
+          const json = (await res.json()) as GiaLaiCompareReport & {
+            added_items?: GiaLaiChangeItem[];
+            removed_items?: GiaLaiChangeItem[];
+            modified_items?: GiaLaiChangeItem[];
+          };
+          if (!json || !json.summary) {
+            throw new Error(`Dữ liệu compare_report.json không hợp lệ từ ${url}`);
+          }
+
+          const newEtag = res.headers.get('etag') || undefined;
+          const entry = this.buildGiaLaiPreparedCache(json, newEtag);
+          this.giaLaiCompareCache = entry;
+          return entry;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (this.giaLaiCompareCache) {
+        return this.giaLaiCompareCache;
+      }
+
+      throw new Error(
+        `Không thể tải báo cáo biến động TTHC Gia Lai (compare_report.json): ${lastError instanceof Error ? lastError.message : String(lastError)}`
+      );
+    })();
+
+    try {
+      return await this.giaLaiCompareInflight;
+    } finally {
+      this.giaLaiCompareInflight = null;
+    }
+  }
 
   /**
    * Tải báo cáo so sánh biến động tăng/giảm TTHC & TTHC Nội bộ tỉnh Gia Lai
    * Nguồn: https://github.com/duynghiaqn/Crawler-TTHC/tree/data-gl (compare_report.json)
    */
   async loadGiaLaiCompareReport(forceRefresh = false): Promise<GiaLaiCompareReport> {
-    const now = Date.now();
-    if (!forceRefresh && this.giaLaiCompareCache && now - this.giaLaiCompareCache.timestamp < 5 * 60 * 1000) {
-      return this.giaLaiCompareCache.data;
-    }
-
-    const urls = getGiaLaiCompareReportUrls();
-    let lastError: unknown = null;
-
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status} từ ${url}`);
-        }
-        const json = (await res.json()) as GiaLaiCompareReport;
-        if (!json || !json.summary) {
-          throw new Error(`Dữ liệu compare_report.json không hợp lệ từ ${url}`);
-        }
-        this.giaLaiCompareCache = { data: json, timestamp: now };
-        return json;
-      } catch (err) {
-        lastError = err;
-      }
-    }
-
-    if (this.giaLaiCompareCache) {
-      return this.giaLaiCompareCache.data;
-    }
-
-    throw new Error(
-      `Không thể tải báo cáo biến động TTHC Gia Lai (compare_report.json): ${lastError instanceof Error ? lastError.message : String(lastError)}`
-    );
+    const entry = await this.loadGiaLaiCompareCacheEntry(forceRefresh);
+    return entry.data;
   }
 
   /**
    * Phân tích biến động tăng/giảm Thủ tục hành chính Gia Lai & Thủ tục nội bộ Gia Lai
    */
   async analyzeGiaLaiChanges(params: GiaLaiChangeAnalysisParams = {}): Promise<GiaLaiChangeAnalysisResult> {
-    const report = await this.loadGiaLaiCompareReport();
+    const cacheEntry = await this.loadGiaLaiCompareCacheEntry(Boolean(params.lam_moi));
+    const report = cacheEntry.data;
     const nhom = params.nhom || 'tat_ca';
     const loaiBienDong = params.loai_bien_dong || 'tat_ca';
     const cap = params.cap || 'tat_ca';
     const tuKhoa = (params.tu_khoa || '').trim();
+    const kwNorm = tuKhoa ? removeVietnameseTones(tuKhoa) : '';
     const limit = Math.min(Math.max(params.limit || 20, 1), 50);
     const page = Math.max(params.page || 1, 1);
 
-    const addedAll: GiaLaiChangeItem[] = (report.added || []).map(x => ({ ...x, change_type: 'added' }));
-    const removedAll: GiaLaiChangeItem[] = (report.removed || []).map(x => ({ ...x, change_type: 'removed' }));
-    const modifiedAll: GiaLaiChangeItem[] = (report.modified || []).map(x => ({ ...x, change_type: 'modified' }));
-
-    const matchesGroupAndLevel = (item: GiaLaiChangeItem): boolean => {
-      const isNoiBo = Boolean(item.is_noi_bo) || (item.nhom_thu_tuc || '').toLowerCase().includes('nội bộ');
-      if (nhom === 'noi_bo' && !isNoiBo) return false;
-      if (nhom === 'hanh_chinh' && isNoiBo) return false;
-
+    const matchesGroupAndLevel = (
+      item: GiaLaiChangeItem & { _isNoiBo: boolean; _searchHaystack: string }
+    ): boolean => {
+      if (nhom === 'noi_bo' && !item._isNoiBo) return false;
+      if (nhom === 'hanh_chinh' && item._isNoiBo) return false;
       if (cap === 'cap_tinh' && !item.isProvince) return false;
       if (cap === 'cap_xa' && !item.isWard) return false;
-
-      if (tuKhoa) {
-        const kwNorm = removeVietnameseTones(tuKhoa);
-        const haystack = removeVietnameseTones(
-          `${item.code || ''} ${item.name || ''} ${item.category || ''} ${item.agency || ''} ${item.executingAgencies || ''} ${item.departmentPromulgate || ''}`
-        );
-        if (!haystack.includes(kwNorm)) return false;
-      }
+      if (kwNorm && !item._searchHaystack.includes(kwNorm)) return false;
       return true;
     };
 
-    const addedFiltered = addedAll.filter(matchesGroupAndLevel);
-    const removedFiltered = removedAll.filter(matchesGroupAndLevel);
-    const modifiedFiltered = modifiedAll.filter(matchesGroupAndLevel);
+    const addedFiltered = cacheEntry.preparedAdded.filter(matchesGroupAndLevel);
+    const removedFiltered = cacheEntry.preparedRemoved.filter(matchesGroupAndLevel);
+    const modifiedFiltered = cacheEntry.preparedModified.filter(matchesGroupAndLevel);
+
+    const stripInternal = (
+      arr: Array<GiaLaiChangeItem & { _isNoiBo: boolean; _searchHaystack: string }>
+    ): GiaLaiChangeItem[] => arr.map(({ _isNoiBo: _, _searchHaystack: __, ...rest }) => rest);
 
     let combined: GiaLaiChangeItem[] = [];
     if (loaiBienDong === 'tang') {
-      combined = addedFiltered;
+      combined = stripInternal(addedFiltered);
     } else if (loaiBienDong === 'giam') {
-      combined = removedFiltered;
+      combined = stripInternal(removedFiltered);
     } else if (loaiBienDong === 'sua_doi') {
-      combined = modifiedFiltered;
+      combined = stripInternal(modifiedFiltered);
     } else {
-      combined = [...addedFiltered, ...removedFiltered, ...modifiedFiltered];
+      combined = [
+        ...stripInternal(addedFiltered),
+        ...stripInternal(removedFiltered),
+        ...stripInternal(modifiedFiltered)
+      ];
     }
 
     // Thống kê top lĩnh vực và cơ quan có biến động

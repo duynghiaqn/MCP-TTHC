@@ -550,7 +550,12 @@ export const PhanTichBienDongGiaLaiSchema = z.object({
     .enum(['markdown', 'json'])
     .optional()
     .default('markdown')
-    .describe('Định dạng trả về: "markdown" (báo cáo phân tích bảng biểu) hoặc "json" (dữ liệu có cấu trúc)')
+    .describe('Định dạng trả về: "markdown" (báo cáo phân tích bảng biểu) hoặc "json" (dữ liệu có cấu trúc)'),
+  lam_moi: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('true: Bỏ qua cache bộ nhớ, kiểm tra dữ liệu mới nhất trực tiếp từ GitHub/CDN')
 });
 
 export const ThongTinMcpServerSchema = z.object({});

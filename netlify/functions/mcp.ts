@@ -800,6 +800,7 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       const page = parseInt(getParam('page') || '1', 10);
       const limit = parseInt(getParam('limit') || '20', 10);
       const dinh_dang = (getParam('dinh_dang') || 'markdown') as 'markdown' | 'json';
+      const lam_moi = getParam('lam_moi') === 'true' || getParam('refresh') === 'true';
 
       const result = await tthcDataService.analyzeGiaLaiChanges({
         nhom,
@@ -808,7 +809,8 @@ export default async (req: Request, _context: Context): Promise<Response> => {
         tu_khoa,
         page,
         limit,
-        dinh_dang
+        dinh_dang,
+        lam_moi
       });
       return jsonResponse(result, 200, true);
     }
