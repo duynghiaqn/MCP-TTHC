@@ -463,9 +463,13 @@ body {
 /* Playground Layout */
 .playground-layout {
   display: grid;
-  grid-template-columns: 460px 1fr;
+  grid-template-columns: 460px minmax(0, 1fr);
   gap: 24px;
   align-items: start;
+}
+.tool-controls-card,
+.tool-result-card {
+  min-width: 0;
 }
 @media (min-width: 1025px) {
   .tool-controls-card {
@@ -474,7 +478,7 @@ body {
   }
 }
 @media (max-width: 1024px) {
-  .playground-layout { grid-template-columns: 1fr; }
+  .playground-layout { grid-template-columns: minmax(0, 1fr); }
 }
 
 .section-title {
@@ -2004,6 +2008,7 @@ a.meta-pill-qdcb:hover {
 .detail-dvc-banner {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   background: rgba(56, 189, 248, 0.08);
   border: 1px solid rgba(56, 189, 248, 0.25);
@@ -2237,7 +2242,9 @@ a.meta-pill-qdcb:hover {
 }
 
 .qdcb-table-wrap {
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 10px 14px;
 }
 .qdcb-table {
