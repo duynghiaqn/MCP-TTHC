@@ -461,12 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const so = document.getElementById('input-qdcb-so')?.value.trim();
         const cq = document.getElementById('input-qdcb-coquan')?.value.trim();
         const lv = document.getElementById('input-qdcb-linhvuc')?.value.trim();
+        const namVal = document.getElementById('input-qdcb-nam')?.value.trim();
+        const thangVal = document.getElementById('input-qdcb-thang')?.value.trim();
         const isMonthly = document.getElementById('select-qdcb-monthly')?.value === 'true';
         args = {
           tu_khoa: kw || undefined,
           so_quyet_dinh: so || undefined,
           co_quan_ban_hanh: cq || undefined,
           linh_vuc: lv || undefined,
+          nam: namVal ? parseInt(namVal, 10) : undefined,
+          thang: thangVal || undefined,
           moi_trong_thang: isMonthly,
           limit,
           page,

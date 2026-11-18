@@ -544,6 +544,17 @@
                 </div>
               </div>
 
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-qdcb-nam">Năm ban hành:</label>
+                  <input type="number" id="input-qdcb-nam" class="form-input" placeholder="Ví dụ: 2026" min="2000" max="2100">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="input-qdcb-thang">Tháng cụ thể (YYYY-MM):</label>
+                  <input type="text" id="input-qdcb-thang" class="form-input" placeholder="Ví dụ: 2026-11">
+                </div>
+              </div>
+
               <div class="quick-chips">
                 <span class="chip-label">Mẫu tra cứu QĐCB:</span>
                 <button type="button" class="btn-chip" data-fill-qdcb-so="807/QĐ-TTCP">807/QĐ-TTCP</button>
@@ -742,21 +753,78 @@
               </div>
               <span class="tool-header-badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);"><i class="bi bi-dot"></i> QĐCB DVCQG</span>
             </div>
-            <div class="tool-doc-body">
-              <p class="tool-description">
-                Tra cứu danh mục Quyết định công bố (QĐCB) TTHC trên toàn quốc từ nguồn <code>Crawler-TTHC/qdcb</code>. Hỗ trợ lọc theo từ khóa trích yếu, số quyết định, cơ quan ban hành, lĩnh vực, năm/tháng hoặc lấy nhanh QĐCB mới ban hành trong tháng.
-              </p>
-              <div class="tool-schema-meta">
-                <span class="schema-badge opt"><i class="bi bi-search"></i> tu_khoa, so_quyet_dinh</span>
-                <span class="schema-badge opt"><i class="bi bi-building"></i> co_quan_ban_hanh, linh_vuc</span>
-                <span class="schema-badge opt"><i class="bi bi-calendar-event"></i> nam, thang, moi_trong_thang</span>
+            <p class="tool-doc-desc">
+              Tra cứu danh mục Quyết định công bố (QĐCB) TTHC trên toàn quốc từ nguồn <code>Crawler-TTHC/qdcb</code> (~2,000 QĐCB cấp Bộ, Tỉnh). Hỗ trợ tìm theo từ khóa trích yếu, số quyết định, cơ quan ban hành, lĩnh vực, năm/tháng hoặc lấy nhanh QĐCB mới ban hành trong tháng.
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">10 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">tu_khoa</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Từ khóa tìm kiếm trong trích yếu, số quyết định, cơ quan hoặc lĩnh vực QĐCB.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">so_quyet_dinh</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Số Quyết định công bố (vd: <code>807/QĐ-TTCP</code>, <code>4045/QĐ-UBND</code>).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">co_quan_ban_hanh</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Cơ quan ban hành quyết định (vd: <code>Thanh tra Chính phủ</code>, <code>UBND tỉnh Gia Lai</code>).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">linh_vuc</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Lĩnh vực quản lý của QĐCB (vd: <code>Hộ tịch</code>, <code>Đất đai</code>).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">nam</code> / <code class="param-name">thang</code>
+                    <span class="param-type">number | string</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Lọc theo năm (vd: <code>2026</code>) hoặc tháng <code>YYYY-MM</code> (vd: <code>2026-11</code>).</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">moi_trong_thang</code>
+                    <span class="param-type">boolean</span>
+                    <span class="param-req optional">mặc định: false</span>
+                  </div>
+                  <div class="param-desc"><code>true</code> để lấy nhanh danh sách QĐCB mới ban hành trong tháng hiện tại.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">limit</code> / <code class="param-name">page</code> / <code class="param-name">dinh_dang</code>
+                    <span class="param-type">number | enum</span>
+                    <span class="param-req optional">tùy chọn</span>
+                  </div>
+                  <div class="param-desc">Phân trang (1-50, trang mặc định 1) và định dạng <code>markdown</code> | <code>json</code>.</div>
+                </div>
               </div>
             </div>
-            <div class="tool-card-footer">
-              <span class="endpoint-hint"><i class="bi bi-hdd-network"></i> GET /api/qdcb/search</span>
-              <button type="button" class="btn-try-tool" data-goto-tool="tra_cuu_quyet_dinh_cong_bo" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35);">
-                <i class="bi bi-play-circle-fill"></i> Thử ngay
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="tra_cuu_quyet_dinh_cong_bo">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
               </button>
+              <span class="tool-badge-protocol"><i class="bi bi-hdd-network"></i> GET /api/qdcb/search</span>
             </div>
           </div>
 
@@ -784,20 +852,38 @@
               </div>
               <span class="tool-header-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);"><i class="bi bi-dot"></i> Chi tiết QĐCB</span>
             </div>
-            <div class="tool-doc-body">
-              <p class="tool-description">
-                Lấy thông tin chi tiết toàn văn một Quyết định công bố theo Số QĐ hoặc UUID, bao gồm toàn bộ danh sách TTHC kèm theo (Công bố mới, Sửa đổi bổ sung, Bãi bỏ, Thay thế).
-              </p>
-              <div class="tool-schema-meta">
-                <span class="schema-badge req"><i class="bi bi-asterisk"></i> so_hoac_id_qdcb: string</span>
-                <span class="schema-badge opt"><i class="bi bi-filetype-raw"></i> dinh_dang: markdown | json</span>
+            <p class="tool-doc-desc">
+              Lấy thông tin chi tiết toàn văn một Quyết định công bố theo Số QĐ hoặc UUID chuẩn cấu trúc Cổng DVCQG, bao gồm trích yếu, ngày hiệu lực, tệp đính kèm và toàn bộ danh sách TTHC kèm theo (Công bố mới, Sửa đổi bổ sung, Bãi bỏ, Thay thế).
+            </p>
+            <div class="tool-params-section">
+              <div class="params-header-row">
+                <span class="params-heading"><i class="bi bi-sliders2"></i> Tham số Schema</span>
+                <span class="params-count-pill">2 tham số</span>
+              </div>
+              <div class="params-list-items">
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">so_hoac_id_qdcb</code>
+                    <span class="param-type">string</span>
+                    <span class="param-req required">bắt buộc</span>
+                  </div>
+                  <div class="param-desc">Số Quyết định công bố (vd: <code>807/QĐ-TTCP</code>) hoặc UUID định danh QĐCB.</div>
+                </div>
+                <div class="param-item">
+                  <div class="param-meta">
+                    <code class="param-name">dinh_dang</code>
+                    <span class="param-type">enum</span>
+                    <span class="param-req optional">mặc định: markdown</span>
+                  </div>
+                  <div class="param-desc">Định dạng kết quả: <code>markdown</code> (trực quan kèm bảng TTHC) hoặc <code>json</code>.</div>
+                </div>
               </div>
             </div>
-            <div class="tool-card-footer">
-              <span class="endpoint-hint"><i class="bi bi-hdd-network"></i> GET /api/qdcb/detail</span>
-              <button type="button" class="btn-try-tool" data-goto-tool="chi_tiet_quyet_dinh_cong_bo" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35);">
-                <i class="bi bi-play-circle-fill"></i> Thử ngay
+            <div class="tool-doc-footer">
+              <button type="button" class="btn-try-tool" data-tool="chi_tiet_quyet_dinh_cong_bo">
+                <i class="bi bi-play-fill"></i> Thử nghiệm ngay
               </button>
+              <span class="tool-badge-protocol"><i class="bi bi-hdd-network"></i> GET /api/qdcb/detail</span>
             </div>
           </div>
           
