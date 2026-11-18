@@ -354,6 +354,12 @@ export const BACKUP_QDCB_MONTHLY_URLS = [
   'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/qdcb/monthly_new.json'
 ];
 
+export const BACKUP_QDCB_VERSION_URLS = [
+  'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/version.json',
+  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/version.json',
+  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/qdcb/version.json'
+];
+
 export function getQdcbIndexUrls(): string[] {
   const envUrl = process.env.QDCB_INDEX_URL;
   const urls: string[] = [
@@ -377,6 +383,15 @@ export function getQdcbMonthlyUrls(): string[] {
   const urls: string[] = [
     ...(envUrl ? [envUrl] : []),
     ...BACKUP_QDCB_MONTHLY_URLS
+  ];
+  return Array.from(new Set(urls.filter(Boolean)));
+}
+
+export function getQdcbVersionUrls(): string[] {
+  const envUrl = process.env.QDCB_VERSION_URL;
+  const urls: string[] = [
+    ...(envUrl ? [envUrl] : []),
+    ...BACKUP_QDCB_VERSION_URLS
   ];
   return Array.from(new Set(urls.filter(Boolean)));
 }
@@ -3711,6 +3726,45 @@ class TTHCDataService {
       data: detail,
       markdown: lines.join('\n')
     };
+  }
+
+  private qdcbVersionCache: { data: { total_records: number; last_updated: string; monthly_new?: number }; timestamp: number } | null = null;
+
+  async getQDCBStats(): Promise<{ total_records: number; last_updated: string; monthly_new?: number }> {
+    const now = Date.now();
+    if (this.qdcbVersionCache && now - this.qdcbVersionCache.timestamp < 15 * 60 * 1000) {
+      return this.qdcbVersionCache.data;
+    }
+
+    const versionUrls = getQdcbVersionUrls();
+    for (const url of versionUrls) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (res.ok) {
+          const json = (await res.json()) as any;
+          if (json && typeof json.total_records === 'number') {
+            const data = {
+              total_records: json.total_records,
+              last_updated: json.last_updated || new Date().toISOString(),
+              monthly_new: json.monthly_summary?.total_monthly_new
+            };
+            this.qdcbVersionCache = { data, timestamp: now };
+            return data;
+          }
+        }
+      } catch {
+        // Thử link tiếp theo
+      }
+    }
+
+    // Fallback sang loadQDCBIndex nếu version.json không tải được
+    const idx = await this.loadQDCBIndex();
+    const fallback = {
+      total_records: idx.length,
+      last_updated: this.lastQdcbFetchTime ? new Date(this.lastQdcbFetchTime).toISOString() : new Date().toISOString()
+    };
+    this.qdcbVersionCache = { data: fallback, timestamp: now };
+    return fallback;
   }
 }
 

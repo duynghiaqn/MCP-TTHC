@@ -737,19 +737,40 @@ export function createTTHCMcpServer(): McpServer {
   // TOOL 7: Thông tin phiên bản & Hệ thống MCP
   server.tool(
     'thong_tin_mcp_server',
-    'Lấy thông tin chi tiết về phiên bản ứng dụng MCP, tác giả, giao thức và tình trạng cơ sở dữ liệu.',
+    'Lấy thông tin chi tiết về phiên bản ứng dụng MCP, tác giả KynChou, chuẩn giao thức, số lượng TTHC, số lượng Quyết định công bố (QĐCB) và thời gian cập nhật dữ liệu mới nhất.',
     ThongTinMcpServerSchema.shape,
     async () => {
-      const stats = await tthcDataService.getStats();
+      const [stats, qdcbStats] = await Promise.all([
+        tthcDataService.getStats(),
+        tthcDataService.getQDCBStats().catch(() => ({
+          total_records: 0,
+          last_updated: 'Chưa đồng bộ',
+          monthly_new: undefined
+        }))
+      ]);
+
+      const formatIsoVi = (isoStr: string): string => {
+        if (!isoStr || isoStr === 'Chưa đồng bộ') return isoStr || 'N/A';
+        const d = new Date(isoStr);
+        if (Number.isNaN(d.getTime())) return isoStr;
+        return `${d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} (${isoStr})`;
+      };
+
       const lines: string[] = [];
       lines.push(`## ${APP_TITLE} (v${APP_VERSION})`);
       lines.push(`- **Tên hệ thống**: \`${APP_NAME}\``);
       lines.push(`- **Phiên bản ứng dụng**: **v${APP_VERSION}**`);
-      lines.push(`- **Phát triển bởi**: **${APP_AUTHOR}**`);
+      lines.push(`- **Tác giả phát triển**: **${APP_AUTHOR}** *(Dev by KynChou)*`);
       lines.push(`- **Chuẩn giao thức MCP**: \`${MCP_PROTOCOL_VERSION}\``);
-      lines.push(`- **Tổng số thủ tục hành chính**: **${stats.totalRecords.toLocaleString('vi-VN')}** thủ tục`);
-      lines.push(`- **Cập nhật dữ liệu quốc gia**: ${stats.lastUpdated}`);
-      lines.push(`- **Nền tảng hỗ trợ**: SSE (Cursor AI, Claude Desktop, Windsurf) & Direct HTTP JSON-RPC`);
+      lines.push('');
+      lines.push('### 📊 Thống kê Cơ sở dữ liệu');
+      lines.push(`- **Số lượng Thủ tục Hành chính (TTHC)**: **${stats.totalRecords.toLocaleString('vi-VN')}** thủ tục`);
+      lines.push(`- **Thời gian cập nhật dữ liệu TTHC**: ${formatIsoVi(stats.lastUpdated)}`);
+      lines.push(`- **Số lượng Quyết định công bố (QĐCB)**: **${qdcbStats.total_records.toLocaleString('vi-VN')}** quyết định${qdcbStats.monthly_new !== undefined ? ` *(+${qdcbStats.monthly_new} mới trong tháng)*` : ''}`);
+      lines.push(`- **Thời gian cập nhật dữ liệu QĐCB**: ${formatIsoVi(qdcbStats.last_updated)}`);
+      lines.push('');
+      lines.push('### 🌐 Nền tảng & Giao thức hỗ trợ');
+      lines.push(`- **Nền tảng kết nối**: SSE (Cursor AI, Claude Desktop, Windsurf), Streamable HTTP, Direct HTTP JSON-RPC & OpenAI Agent Plugins`);
 
       return {
         content: [

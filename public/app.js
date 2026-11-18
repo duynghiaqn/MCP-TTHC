@@ -701,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderRichView(toolName, markdownText) {
-    if (toolName === 'chi_tiet_tthc' || toolName === 'tra_cuu_theo_ma_tthc') {
+    if (toolName === 'chi_tiet_tthc' || toolName === 'tra_cuu_theo_ma_tthc' || toolName === 'thong_tin_mcp_server') {
       renderProcedureDetail(markdownText);
     } else if (
       toolName === 'chi_tiet_quyet_dinh_cong_bo' ||

@@ -329,8 +329,12 @@ async function runTests() {
     }
   };
   const versionRes = (await executeJsonRpcMessage(versionRpc)) as any;
-  console.assert(versionRes.result?.content?.[0]?.text?.includes('v1.1.0'), 'Phải chứa phiên bản v1.1.0');
-  console.assert(versionRes.result?.content?.[0]?.text?.includes('KynChou'), 'Phải chứa tên tác giả KynChou');
+  const versionText = versionRes.result?.content?.[0]?.text || '';
+  console.assert(versionText.includes('v1.1.0'), 'Phải chứa phiên bản v1.1.0');
+  console.assert(versionText.includes('KynChou'), 'Phải chứa tên tác giả KynChou');
+  console.assert(versionText.includes('TTHC') && versionText.includes('QĐCB'), 'Phải chứa thông tin TTHC và QĐCB');
+  console.assert(versionText.includes('Thời gian cập nhật dữ liệu QĐCB'), 'Phải chứa thời gian cập nhật dữ liệu QĐCB');
+  console.log('[PASS] Tool thong_tin_mcp_server trả về đầy đủ phiên bản, tác giả KynChou, số lượng TTHC & QĐCB, thời gian cập nhật!\n');
 
   // TEST 10: HTTP Handler: GET /mcp & Server Info (Truyền ?api-key=... theo chuẩn Streamable HTTP & GPT Web)
   console.log('--- TEST 10: Handler GET /mcp & Server Info (Truyền ?api-key=...) ---');
