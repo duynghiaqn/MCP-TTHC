@@ -1964,3 +1964,221 @@ a.meta-pill-qdcb:hover {
   word-break: break-word;
   user-select: text;
 }
+
+/* =========================================================
+   QĐCB MODAL (CẤU TRÚC CHUẨN DỊCH VỤ CÔNG QUỐC GIA)
+   ========================================================= */
+.qdcb-modal-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.qdcb-excerpt-box {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.8) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+}
+.qdcb-excerpt-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fbbf24;
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.qdcb-excerpt-text {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #f8fafc;
+  line-height: 1.5;
+}
+
+.qdcb-info-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+}
+.qdcb-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.qdcb-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.qdcb-info-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.qdcb-info-val {
+  font-size: 0.88rem;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.qdcb-attachments-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.qdcb-file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: var(--transition);
+}
+.qdcb-file-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+}
+
+/* Tabs Danh sách TTHC thuộc QĐCB */
+.qdcb-tabs-section {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.qdcb-tabs-bar {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px 0 14px;
+  background: rgba(6, 9, 19, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+}
+.qdcb-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+.qdcb-tab-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+}
+.qdcb-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: rgba(56, 189, 248, 0.08);
+}
+.qdcb-tab-count {
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.qdcb-tab-btn.active .qdcb-tab-count {
+  background: rgba(56, 189, 248, 0.22);
+  color: #38bdf8;
+}
+
+.qdcb-table-wrap {
+  overflow-x: auto;
+  padding: 12px 14px;
+}
+.qdcb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.qdcb-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+.qdcb-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  vertical-align: middle;
+}
+.qdcb-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.qdcb-tthc-code-btn {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.qdcb-tthc-code-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  color: #fff;
+}
+.qdcb-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.qdcb-status-active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.qdcb-status-inactive {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+.qdcb-empty-tab {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}

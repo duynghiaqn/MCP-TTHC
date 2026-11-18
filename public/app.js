@@ -699,6 +699,31 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderRichView(toolName, markdownText) {
     if (toolName === 'chi_tiet_tthc' || toolName === 'tra_cuu_theo_ma_tthc') {
       renderProcedureDetail(markdownText);
+    } else if (
+      toolName === 'chi_tiet_quyet_dinh_cong_bo' ||
+      toolName === 'chi_tiet_qdcb' ||
+      toolName === 'lay_qdcb_theo_so'
+    ) {
+      renderProcedureDetail(markdownText);
+      // Nếu là chi tiết QĐCB, trích xuất ID/Số QĐ và thêm nút mở Modal chuẩn DVCQG
+      const matchQd = markdownText.match(/\*\*ID QĐCB\*\*:\s*`([^`]+)`/) || markdownText.match(/\*\*Số Quyết định\*\*:\s*`([^`]+)`/);
+      if (matchQd && matchQd[1]) {
+        const qdId = matchQd[1];
+        const banner = document.createElement('div');
+        banner.className = 'detail-dvc-banner';
+        banner.style.cssText = 'justify-content: space-between; margin-bottom: 14px; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35);';
+        banner.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <i class="bi bi-layout-text-window-reverse" style="color:#fbbf24;"></i>
+            <span>Xem giao diện bảng QĐCB chuẩn Cổng Dịch vụ công Quốc gia</span>
+          </div>
+          <button type="button" class="btn btn-primary btn-xs btn-view-qdcb-detail" data-qdcb-id="${escapeHtml(qdId)}">
+            <i class="bi bi-window-fullscreen"></i> Mở Modal QĐCB
+          </button>
+        `;
+        viewportRendered.prepend(banner);
+        banner.querySelector('.btn-view-qdcb-detail')?.addEventListener('click', () => openQDCBModal(qdId));
+      }
     } else {
       renderProcedureList(markdownText);
     }
@@ -725,14 +750,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         inItem = true;
         currentItem.title = line.slice(4);
+        if (currentItem.title.includes('Quyết định số')) {
+          currentItem.isQdcb = true;
+          const mSo = currentItem.title.match(/`([^`]+)`/);
+          if (mSo) currentItem.code = mSo[1];
+        }
       } else if (line.startsWith('- **Mã TTHC**:')) {
         const matchCode = line.match(/`([^`]+)`/);
         if (matchCode) currentItem.code = matchCode[1];
-      } else if (line.startsWith('- **Cấp thực hiện**:')) {
+      } else if (line.startsWith('- **ID QĐCB**:')) {
+        currentItem.isQdcb = true;
+        const matchId = line.match(/`([^`]+)`/);
+        if (matchId) currentItem.qdcbId = matchId[1];
+      } else if (line.startsWith('- **Cấp thực hiện**:') || line.startsWith('- **Ngày ban hành**:')) {
         currentItem.meta1 = line;
-      } else if (line.startsWith('- **Cơ quan thực hiện**:')) {
-        currentItem.meta2 = line;
-      } else if (line.startsWith('- **Link DVC')) {
+      } else if (line.startsWith('- **Cơ quan thực hiện**:') || line.startsWith('- **Trích yếu**:') || line.startsWith('- **Lĩnh vực**:')) {
+        if (!currentItem.meta2) currentItem.meta2 = line;
+        else currentItem.meta2 += ' | ' + line.replace(/^- /, '');
+      } else if (line.startsWith('- **Link DVC') || line.startsWith('- **Link gốc DVCQG**:')) {
         const matchLink = line.match(/\((https?:\/\/[^)]+)\)/);
         if (matchLink) currentItem.targetLink = matchLink[1];
       }
@@ -755,12 +790,46 @@ document.addEventListener('DOMContentLoaded', () => {
         openDetailModal(code);
       });
     });
+
+    // Attach click events to "Xem chi tiết QĐCB" buttons
+    viewportRendered.querySelectorAll('.btn-view-qdcb-detail').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const qdcbId = btn.dataset.qdcbId;
+        openQDCBModal(qdcbId);
+      });
+    });
   }
 
   function buildItemCard(item) {
     const targetLink = item.targetLink || (item.id
       ? `https://dichvucong.gov.vn/thu-tuc-hanh-chinh/${encodeURIComponent(item.id)}`
       : '');
+
+    if (item.isQdcb) {
+      const qdKey = item.qdcbId || item.code || '';
+      return `
+        <div class="rendered-item-card" style="border-left: 3px solid #f59e0b;">
+          <div class="rendered-item-header">
+            <h4 class="rendered-item-title">${escapeHtml(item.title || 'Quyết định công bố')}</h4>
+            ${item.code ? `<span class="meta-pill meta-pill-qdcb" style="font-size:0.75rem; padding:2px 8px;">${escapeHtml(item.code)}</span>` : ''}
+          </div>
+          <div class="rendered-item-meta">
+            ${item.meta1 ? `<div>${item.meta1.replace(/- \*\*/g, '<span><strong>').replace(/\*\*/g, '</strong></span>')}</div>` : ''}
+            ${item.meta2 ? `<div>${item.meta2.replace(/- \*\*/g, '<span><strong>').replace(/\*\*/g, '</strong></span>')}</div>` : ''}
+          </div>
+          <div class="rendered-item-actions">
+            ${targetLink ? `
+            <a href="${targetLink}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs" title="Xem văn bản trên Cổng Dịch vụ công Quốc gia">
+              <i class="bi bi-box-arrow-up-right"></i> Xem trên DVCQG
+            </a>
+            ` : ''}
+            <button class="btn btn-primary btn-xs btn-view-qdcb-detail" data-qdcb-id="${escapeHtml(qdKey)}">
+              <i class="bi bi-eye"></i> Chi tiết QĐCB
+            </button>
+          </div>
+        </div>
+      `;
+    }
 
     return `
       <div class="rendered-item-card">
@@ -874,14 +943,9 @@ document.addEventListener('DOMContentLoaded', () => {
       html += `<span class="meta-pill meta-pill-code"><i class="bi bi-tag-fill"></i> ${escapeHtml(code)}</span>`;
     }
     if (soQd && soQd !== 'Chưa cập nhật') {
-      const qdLinkMatch = soQd.match(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/);
       const soQdClean = soQd.split('(')[0].split('—')[0].replace(/`/g, '').trim();
       if (soQdClean) {
-        if (qdLinkMatch && qdLinkMatch[1]) {
-          html += `<a href="${escapeHtml(qdLinkMatch[1])}" target="_blank" rel="noopener noreferrer" class="meta-pill meta-pill-qdcb" title="Số Quyết định công bố: ${escapeHtml(soQdClean)} (bấm để xem văn bản gốc)"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)} <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i></a>`;
-        } else {
-          html += `<span class="meta-pill meta-pill-qdcb" title="Số Quyết định công bố: ${escapeHtml(soQd)}"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</span>`;
-        }
+        html += `<button type="button" class="meta-pill meta-pill-qdcb btn-open-qdcb-modal" data-qdcb-id="${escapeHtml(soQdClean)}" style="cursor:pointer;" title="Bấm để xem chi tiết Quyết định công bố ${escapeHtml(soQdClean)}"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</button>`;
       }
     }
     if (cap) {
@@ -1294,6 +1358,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Tương tác Collapsible Sections & Quick Nav Chips
   document.addEventListener('click', (e) => {
+    // 0. Mở Modal Chi tiết QĐCB khi click vào label QĐCB
+    const qdcbBtn = e.target.closest('.btn-open-qdcb-modal');
+    if (qdcbBtn) {
+      const qdId = qdcbBtn.dataset.qdcbId;
+      if (qdId) openQDCBModal(qdId);
+      return;
+    }
+
     // 1. Toggle đóng/mở thẻ section card khi click header
     const toggleHeader = e.target.closest('.section-card-header-toggle');
     if (toggleHeader) {
@@ -1419,13 +1491,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const rawQd = matchSoQd[1].trim();
         if (rawQd && !rawQd.includes('Chưa cập nhật')) {
           const soQdClean = rawQd.split('(')[0].split('—')[0].replace(/`/g, '').trim();
-          const qdUrlMatch = rawQd.match(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/);
           if (soQdClean) {
-            if (qdUrlMatch && qdUrlMatch[1]) {
-              qdcbPill = `<a href="${escapeHtml(qdUrlMatch[1])}" target="_blank" rel="noopener noreferrer" class="meta-pill meta-pill-qdcb" style="padding: 4px 10px; font-size: 0.75rem;" title="Xem Quyết định công bố"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)} <i class="bi bi-box-arrow-up-right" style="font-size: 0.68rem;"></i></a>`;
-            } else {
-              qdcbPill = `<span class="meta-pill meta-pill-qdcb" style="padding: 4px 10px; font-size: 0.75rem;" title="Số Quyết định công bố"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</span>`;
-            }
+            qdcbPill = `<button type="button" class="meta-pill meta-pill-qdcb btn-open-qdcb-modal" data-qdcb-id="${escapeHtml(soQdClean)}" style="padding: 4px 10px; font-size: 0.75rem; cursor: pointer;" title="Bấm để mở Modal Chi tiết QĐCB"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</button>`;
           }
         }
       }
@@ -1454,6 +1521,254 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       modalBody.innerHTML = `<p style="color: #f43f5e;">Lỗi tải chi tiết: ${escapeHtml(err.message)}</p>`;
     }
+  }
+
+  // Mở Modal Chi tiết QĐCB chuẩn cấu trúc Cổng Dịch vụ công Quốc gia
+  async function openQDCBModal(idOrSoQd) {
+    if (!idOrSoQd) return;
+    modal.style.display = 'flex';
+    currentModalMarkdown = '';
+    currentModalCode = `QDCB-${idOrSoQd}`;
+
+    if (modalBody) modalBody.style.display = 'block';
+    if (modalMarkdownViewport) modalMarkdownViewport.style.display = 'none';
+    if (btnModalModeRendered) btnModalModeRendered.classList.add('active');
+    if (btnModalModeMarkdown) btnModalModeMarkdown.classList.remove('active');
+    if (modalViewToggle) modalViewToggle.style.display = 'none';
+    if (btnModalCopyMd) btnModalCopyMd.style.display = 'none';
+    if (btnModalDownloadMd) btnModalDownloadMd.style.display = 'none';
+
+    modalTitle.innerHTML = `<span>Quyết định công bố: ${escapeHtml(idOrSoQd)}</span>`;
+    modalBody.innerHTML = `
+      <div class="loader-container">
+        <div class="spinner"></div>
+        <p>Đang tải chi tiết Quyết định công bố ${escapeHtml(idOrSoQd)}...</p>
+      </div>
+    `;
+
+    const apiKey = getActiveApiKey();
+    const keyQuery = apiKey ? `&api-key=${encodeURIComponent(apiKey)}` : '';
+
+    try {
+      const [jsonRes, mdRes] = await Promise.all([
+        fetch(`${currentOrigin}/api/qdcb/detail?id=${encodeURIComponent(idOrSoQd)}&dinh_dang=json${keyQuery}`),
+        fetch(`${currentOrigin}/api/qdcb/detail?id=${encodeURIComponent(idOrSoQd)}&dinh_dang=markdown${keyQuery}`)
+      ]);
+
+      const jsonData = await jsonRes.json();
+      const mdData = await mdRes.json();
+
+      if (!jsonData.success || !jsonData.data) {
+        modalBody.innerHTML = `<p style="color: #f43f5e;">${escapeHtml(jsonData.markdown || 'Không tìm thấy Quyết định công bố.')}</p>`;
+        return;
+      }
+
+      const detail = jsonData.data;
+      currentModalMarkdown = mdData.markdown || '';
+      if (modalMarkdownCode) modalMarkdownCode.textContent = currentModalMarkdown;
+
+      const soQd = detail.so_quyet_dinh || idOrSoQd;
+      const trangThaiLabel = detail.trang_thai_label || 'Đã công bố';
+      const loaiLabel = detail.loai_quyet_dinh_label || 'Tiêu chuẩn';
+
+      modalTitle.innerHTML = `
+        <span>Quyết định công bố: ${escapeHtml(soQd)}</span>
+        <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+          <i class="bi bi-check-circle-fill"></i> ${escapeHtml(trangThaiLabel)}
+        </span>
+        <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+          ${escapeHtml(loaiLabel)}
+        </span>
+        ${detail.url ? `
+        <a href="${escapeHtml(detail.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs modal-dvc-badge" title="Mở văn bản gốc trên Cổng DVCQG">
+          <i class="bi bi-box-arrow-up-right"></i> Xem trên DVCQG
+        </a>` : ''}
+      `;
+
+      modalBody.innerHTML = renderQDCBModalHtml(detail);
+
+      // Gắn sự kiện chuyển tab Công khai mới / Sửa đổi bổ sung / Bãi bỏ
+      const tabBtns = modalBody.querySelectorAll('.qdcb-tab-btn');
+      const tabPanels = modalBody.querySelectorAll('.qdcb-tab-panel');
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTab = btn.dataset.tab;
+          tabBtns.forEach(b => b.classList.remove('active'));
+          tabPanels.forEach(p => (p.style.display = p.dataset.panel === targetTab ? 'block' : 'none'));
+          btn.classList.add('active');
+        });
+      });
+
+      // Gắn sự kiện bấm vào Mã TTHC hoặc nút Xem chi tiết -> mở Modal Chi tiết TTHC
+      modalBody.querySelectorAll('.btn-qdcb-open-tthc').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tthcCode = btn.dataset.tthcCode;
+          if (tthcCode) openDetailModal(tthcCode);
+        });
+      });
+
+      if (modalViewToggle) modalViewToggle.style.display = 'inline-flex';
+      if (btnModalCopyMd) btnModalCopyMd.style.display = 'inline-flex';
+      if (btnModalDownloadMd) btnModalDownloadMd.style.display = 'inline-flex';
+    } catch (err) {
+      modalBody.innerHTML = `<p style="color: #f43f5e;">Lỗi tải chi tiết QĐCB: ${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  function renderQDCBModalHtml(detail) {
+    const soQd = detail.so_quyet_dinh || 'N/A';
+    const trichYeu = detail.trich_yeu || detail.thong_tin_chi_tiet?.proposalExcerpt || 'Không có trích yếu.';
+    const coQuan = detail.co_quan_ban_hanh || 'N/A';
+    const linhVuc = Array.isArray(detail.linh_vuc) && detail.linh_vuc.length > 0 ? detail.linh_vuc.join(', ') : 'Chưa cập nhật';
+    const ngayQd = detail.ngay_quyet_dinh || 'Chưa cập nhật';
+    const ngayHieuLuc = detail.ngay_hieu_luc || ngayQd;
+    const ngayCongBo = detail.ngay_cong_bo || 'Chưa cập nhật';
+    const files = Array.isArray(detail.tep_dinh_kem) ? detail.tep_dinh_kem : [];
+
+    const tthc = detail.tthc_kem_theo || {};
+    const groups = [
+      { key: 'cong_khai_moi', label: 'Công khai mới', icon: 'bi-plus-circle-fill', data: tthc.cong_khai_moi },
+      { key: 'sua_doi_bo_sung', label: 'Sửa đổi, bổ sung', icon: 'bi-pencil-square', data: tthc.sua_doi_bo_sung },
+      { key: 'bai_bo', label: 'Bãi bỏ', icon: 'bi-slash-circle-fill', data: tthc.bai_bo },
+      { key: 'thay_the', label: 'Thay thế', icon: 'bi-arrow-repeat', data: tthc.thay_the },
+      { key: 'dieu_chinh', label: 'Điều chỉnh', icon: 'bi-sliders', data: tthc.dieu_chinh }
+    ].filter(g => g.key === 'cong_khai_moi' || g.key === 'sua_doi_bo_sung' || g.key === 'bai_bo' || (g.data && g.data.items && g.data.items.length > 0));
+
+    // Tự động chọn tab đầu tiên có item (> 0)
+    let activeKey = groups.find(g => g.data && g.data.items && g.data.items.length > 0)?.key || groups[0]?.key || 'cong_khai_moi';
+
+    let html = '<div class="qdcb-modal-view">';
+
+    // 1. Trích yếu quyết định
+    html += `
+      <div class="qdcb-excerpt-box">
+        <div class="qdcb-excerpt-label"><i class="bi bi-file-text-fill"></i> Trích yếu Quyết định công bố</div>
+        <div class="qdcb-excerpt-text">${escapeHtml(trichYeu)}</div>
+      </div>
+    `;
+
+    // 2. Thẻ Thông tin chung (chuẩn lưới DVCQG)
+    html += `
+      <div class="qdcb-info-card">
+        <div class="qdcb-info-grid">
+          <div class="qdcb-info-cell">
+            <span class="qdcb-info-label">Số quyết định</span>
+            <span class="qdcb-info-val" style="color:#fbbf24; font-family:var(--font-mono);">${escapeHtml(soQd)}</span>
+          </div>
+          <div class="qdcb-info-cell">
+            <span class="qdcb-info-label">Cơ quan ban hành</span>
+            <span class="qdcb-info-val">${escapeHtml(coQuan)}</span>
+          </div>
+          <div class="qdcb-info-cell">
+            <span class="qdcb-info-label">Lĩnh vực</span>
+            <span class="qdcb-info-val">${escapeHtml(linhVuc)}</span>
+          </div>
+          <div class="qdcb-info-cell">
+            <span class="qdcb-info-label">Ngày quyết định</span>
+            <span class="qdcb-info-val">${escapeHtml(ngayQd)}</span>
+          </div>
+          <div class="qdcb-info-cell">
+            <span class="qdcb-info-label">Ngày hiệu lực</span>
+            <span class="qdcb-info-val">${escapeHtml(ngayHieuLuc)}</span>
+          </div>
+          <div class="qdcb-info-cell">
+            <span class="qdcb-info-label">Ngày công bố</span>
+            <span class="qdcb-info-val">${escapeHtml(ngayCongBo)}</span>
+          </div>
+        </div>
+        ${files.length > 0 ? `
+          <div class="qdcb-attachments-bar">
+            <span class="qdcb-info-label" style="width:100%; margin-bottom:2px;">Tệp đính kèm:</span>
+            ${files.map(f => `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener noreferrer" class="qdcb-file-btn"><i class="bi bi-file-earmark-arrow-down-fill"></i> ${escapeHtml(f.name)}</a>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    // 3. Khối Danh sách TTHC thuộc Quyết định (Tabs + Data Table chuẩn DVCQG)
+    html += '<div class="qdcb-tabs-section">';
+    html += '<div class="qdcb-tabs-bar">';
+    groups.forEach(g => {
+      const cnt = g.data?.count ?? (g.data?.items?.length || 0);
+      const isActive = g.key === activeKey;
+      html += `
+        <button type="button" class="qdcb-tab-btn ${isActive ? 'active' : ''}" data-tab="${g.key}">
+          <i class="bi ${g.icon}"></i>
+          <span>${escapeHtml(g.label)}</span>
+          <span class="qdcb-tab-count">${cnt}</span>
+        </button>
+      `;
+    });
+    html += '</div>';
+
+    groups.forEach(g => {
+      const items = g.data?.items || [];
+      const isActive = g.key === activeKey;
+      html += `<div class="qdcb-tab-panel" data-panel="${g.key}" style="display: ${isActive ? 'block' : 'none'};">`;
+
+      if (items.length === 0) {
+        html += `<div class="qdcb-empty-tab"><i class="bi bi-inbox" style="font-size:1.5rem; display:block; margin-bottom:6px;"></i>Không có thủ tục nào trong mục ${escapeHtml(g.label)}.</div>`;
+      } else {
+        html += `
+          <div class="qdcb-table-wrap">
+            <table class="qdcb-table">
+              <thead>
+                <tr>
+                  <th style="width: 48px;">STT</th>
+                  <th style="width: 120px;">Mã TTHC</th>
+                  <th>Tên thủ tục hành chính</th>
+                  <th style="width: 150px;">Lĩnh vực</th>
+                  <th style="width: 110px;">Ngày hiệu lực</th>
+                  <th style="width: 120px;">Trạng thái</th>
+                  <th style="width: 110px; text-align:right;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((item, idx) => {
+                  const itemLv = Array.isArray(item.linh_vuc) && item.linh_vuc.length > 0 ? item.linh_vuc.join(', ') : linhVuc;
+                  const isInactive = item.trang_thai === 'INACTIVE';
+                  const stLabel = isInactive ? 'Đã bãi bỏ' : 'Đang công bố';
+                  const stClass = isInactive ? 'qdcb-status-inactive' : 'qdcb-status-active';
+                  const effDate = item.ngay_hieu_luc && /^\d{4}-\d{2}-\d{2}/.test(item.ngay_hieu_luc)
+                    ? item.ngay_hieu_luc.slice(0, 10).split('-').reverse().join('/')
+                    : (item.ngay_hieu_luc || ngayHieuLuc);
+                  return `
+                    <tr>
+                      <td>${idx + 1}</td>
+                      <td>
+                        <button type="button" class="qdcb-tthc-code-btn btn-qdcb-open-tthc" data-tthc-code="${escapeHtml(item.ma_tthc || item.id)}" title="Xem chi tiết TTHC ${escapeHtml(item.ma_tthc)}">
+                          ${escapeHtml(item.ma_tthc || 'N/A')}
+                        </button>
+                      </td>
+                      <td style="font-weight: 500;">${escapeHtml(item.ten_tthc || 'N/A')}</td>
+                      <td style="color: var(--text-muted); font-size:0.8rem;">${escapeHtml(itemLv)}</td>
+                      <td style="white-space:nowrap;">${escapeHtml(effDate)}</td>
+                      <td>
+                        <span class="qdcb-status-badge ${stClass}">
+                          <i class="bi ${isInactive ? 'bi-x-circle-fill' : 'bi-check-circle-fill'}"></i> ${stLabel}
+                        </span>
+                      </td>
+                      <td style="text-align:right; white-space:nowrap;">
+                        <button type="button" class="btn btn-primary btn-xs btn-qdcb-open-tthc" data-tthc-code="${escapeHtml(item.ma_tthc || item.id)}" title="Xem chi tiết thủ tục">
+                          <i class="bi bi-eye"></i> Xem
+                        </button>
+                        ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs" title="Mở trên Cổng DVCQG"><i class="bi bi-box-arrow-up-right"></i></a>` : ''}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      html += '</div>';
+    });
+
+    html += '</div>'; // End qdcb-tabs-section
+    html += '</div>'; // End qdcb-modal-view
+    return html;
   }
 
   // Chuyển đổi chế độ xem bên trong modal (Giao diện / Markdown)

@@ -3583,39 +3583,100 @@ class TTHCDataService {
       detail = { ...targetItem };
     }
 
+    const formatDateVi = (val?: string | number | null): string => {
+      if (!val) return 'Chưa cập nhật';
+      if (typeof val === 'number') {
+        const d = new Date(val);
+        if (!Number.isNaN(d.getTime())) {
+          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        }
+      }
+      const str = String(val).trim();
+      const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+      }
+      return str;
+    };
+
+    const rawInfo = (detail.thong_tin_chi_tiet || {}) as Record<string, any>;
+    const soQd = detail.so_quyet_dinh || rawInfo.proposalNumber || rawInfo.decisionNumber || 'N/A';
+    const ngayQd = formatDateVi(rawInfo.decisionDate || detail.ngay_quyet_dinh);
+    const ngayHieuLuc = formatDateVi(rawInfo.effectiveDate || rawInfo.decisionDate || detail.ngay_quyet_dinh);
+    const ngayCongBo = formatDateVi(rawInfo.publicationDate || detail.ngay_cong_bo);
+    const loaiRaw = (detail.loai_quyet_dinh || rawInfo.proposalType || 'STANDARD').toUpperCase();
+    const loaiLabel = loaiRaw === 'STANDARD' ? 'Tiêu chuẩn' : loaiRaw === 'INTERNAL' ? 'Nội bộ' : loaiRaw === 'SPECIFIC' ? 'Đặc thù' : loaiRaw;
+    const trangThaiRaw = (detail.trang_thai || rawInfo.state || 'PUBLICATION').toUpperCase();
+    const trangThaiLabel = trangThaiRaw === 'PUBLICATION' ? 'Đã công bố' : trangThaiRaw;
+    const linhVucList = (detail.linh_vuc && detail.linh_vuc.length > 0)
+      ? detail.linh_vuc
+      : Array.isArray(rawInfo.categories)
+        ? rawInfo.categories.map((c: any) => c.name).filter(Boolean)
+        : [];
+    const coQuan = detail.co_quan_ban_hanh || rawInfo.department?.name || 'N/A';
+
+    // Tổng hợp tệp đính kèm từ decisionAttachmentFiles / proposalAttachmentFiles / tep_dinh_kem
+    const allFiles: Array<{ name: string; url: string }> = [];
+    const seenUrls = new Set<string>();
+    const pushFile = (f: any) => {
+      if (!f) return;
+      const url = typeof f === 'string' ? f : (f.url || f.fileUrl || f.path || '');
+      const name = typeof f === 'string' ? f.split('/').pop() : (f.name || f.fileName || f.originalName || 'Tài liệu đính kèm');
+      if (url && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        allFiles.push({
+          name: String(name),
+          url: url.startsWith('http') ? url : `https://dichvucong.gov.vn/${url.replace(/^\/+/, '')}`
+        });
+      }
+    };
+    (detail.tep_dinh_kem || []).forEach(pushFile);
+    (rawInfo.decisionAttachmentFiles || []).forEach(pushFile);
+    (rawInfo.proposalAttachmentFiles || []).forEach(pushFile);
+
     if (dinhDang === 'json') {
       return {
         success: true,
-        data: detail,
+        data: {
+          ...detail,
+          so_quyet_dinh: soQd,
+          co_quan_ban_hanh: coQuan,
+          linh_vuc: linhVucList,
+          ngay_quyet_dinh: ngayQd,
+          ngay_hieu_luc: ngayHieuLuc,
+          ngay_cong_bo: ngayCongBo,
+          loai_quyet_dinh_label: loaiLabel,
+          trang_thai_label: trangThaiLabel,
+          tep_dinh_kem: allFiles
+        } as QDCBDetail,
         markdown: JSON.stringify(detail, null, 2)
       };
     }
 
     const lines: string[] = [];
-    lines.push(`# Quyết định công bố: ${detail.so_quyet_dinh || 'N/A'}`);
+    lines.push(`# Quyết định công bố: ${soQd}`);
     lines.push('');
-    lines.push(`- **Số Quyết định**: \`${detail.so_quyet_dinh || 'N/A'}\``);
+    lines.push(`- **Số Quyết định**: \`${soQd}\``);
     lines.push(`- **ID QĐCB**: \`${detail.id}\``);
-    lines.push(`- **Cơ quan ban hành**: ${detail.co_quan_ban_hanh || 'N/A'}`);
-    lines.push(`- **Ngày quyết định**: ${detail.ngay_quyet_dinh || 'N/A'}`);
-    lines.push(`- **Ngày công bố**: ${detail.ngay_cong_bo || 'N/A'}`);
-    if (detail.linh_vuc && detail.linh_vuc.length > 0) {
-      lines.push(`- **Lĩnh vực**: ${detail.linh_vuc.join(', ')}`);
-    }
-    lines.push(`- **Loại quyết định**: ${detail.loai_quyet_dinh || 'STANDARD'} | **Trạng thái**: ${detail.trang_thai || 'PUBLICATION'}`);
+    lines.push(`- **Cơ quan ban hành**: ${coQuan}`);
+    lines.push(`- **Lĩnh vực**: ${linhVucList.length > 0 ? linhVucList.join(', ') : 'Chưa cập nhật'}`);
+    lines.push(`- **Ngày quyết định**: ${ngayQd}`);
+    lines.push(`- **Ngày hiệu lực**: ${ngayHieuLuc}`);
+    lines.push(`- **Ngày công bố**: ${ngayCongBo}`);
+    lines.push(`- **Loại quyết định**: ${loaiLabel} | **Trạng thái**: ${trangThaiLabel}`);
     if (detail.url) {
       lines.push(`- **Link gốc DVCQG**: [Xem văn bản trên Cổng DVCQG](${detail.url})`);
     }
     lines.push('');
 
     lines.push('### Trích yếu nội dung');
-    lines.push(detail.trich_yeu || 'Không có trích yếu.');
+    lines.push(detail.trich_yeu || rawInfo.proposalExcerpt || 'Không có trích yếu.');
     lines.push('');
 
-    if (detail.tep_dinh_kem && detail.tep_dinh_kem.length > 0) {
+    if (allFiles.length > 0) {
       lines.push('### Tệp đính kèm');
-      detail.tep_dinh_kem.forEach((f, idx) => {
-        lines.push(`${idx + 1}. [${f.name || 'Tài liệu đính kèm'}](${f.url || '#'})`);
+      allFiles.forEach((f, idx) => {
+        lines.push(`${idx + 1}. [${f.name}](${f.url})`);
       });
       lines.push('');
     }
@@ -3626,8 +3687,11 @@ class TTHCDataService {
         if (!group || !group.items || group.items.length === 0) return;
         lines.push(`### ${title} (${group.count || group.items.length} thủ tục)`);
         group.items.forEach((tthc, idx) => {
+          const lv = Array.isArray(tthc.linh_vuc) && tthc.linh_vuc.length > 0 ? tthc.linh_vuc.join(', ') : (linhVucList.join(', ') || 'N/A');
+          const eff = formatDateVi(tthc.ngay_hieu_luc);
+          const st = tthc.trang_thai === 'INACTIVE' ? 'Đã bãi bỏ' : 'Đang công bố';
           lines.push(`${idx + 1}. **${tthc.ten_tthc || 'N/A'}**`);
-          lines.push(`   - **Mã TTHC**: \`${tthc.ma_tthc || 'N/A'}\` | **Hiệu lực**: ${tthc.ngay_hieu_luc || 'N/A'}`);
+          lines.push(`   - **Mã TTHC**: \`${tthc.ma_tthc || 'N/A'}\` | **Lĩnh vực**: ${lv} | **Hiệu lực**: ${eff} | **Trạng thái**: ${st}`);
           if (tthc.url) {
             lines.push(`   - **Link TTHC**: [Chi tiết trên DVCQG](${tthc.url})`);
           }
