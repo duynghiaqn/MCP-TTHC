@@ -868,10 +868,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Hero Summary Card (Thu gọn toàn bộ metadata dài dòng)
     html += '<div class="meta-summary-card">';
     
-    // Badges Bar: Mã TTHC, Cấp, Lĩnh vực, Mức độ DVCTT, Phí, Loại
+    // Badges Bar: Mã TTHC, Số QĐCB, Cấp, Lĩnh vực, Mức độ DVCTT, Phí, Loại
     html += '<div class="meta-badges-bar">';
     if (code) {
       html += `<span class="meta-pill meta-pill-code"><i class="bi bi-tag-fill"></i> ${escapeHtml(code)}</span>`;
+    }
+    if (soQd && soQd !== 'Chưa cập nhật') {
+      const qdLinkMatch = soQd.match(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/);
+      const soQdClean = soQd.split('(')[0].split('—')[0].replace(/`/g, '').trim();
+      if (soQdClean) {
+        if (qdLinkMatch && qdLinkMatch[1]) {
+          html += `<a href="${escapeHtml(qdLinkMatch[1])}" target="_blank" rel="noopener noreferrer" class="meta-pill meta-pill-qdcb" title="Số Quyết định công bố: ${escapeHtml(soQdClean)} (bấm để xem văn bản gốc)"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)} <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i></a>`;
+        } else {
+          html += `<span class="meta-pill meta-pill-qdcb" title="Số Quyết định công bố: ${escapeHtml(soQd)}"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</span>`;
+        }
+      }
     }
     if (cap) {
       html += `<span class="meta-pill meta-pill-cap"><i class="bi bi-building"></i> ${escapeHtml(cap)}</span>`;
@@ -1401,10 +1412,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      if (mucDoPill) {
+      // Trích xuất Số Quyết định công bố để gắn label trực quan trên tiêu đề Modal
+      const matchSoQd = md.match(/\*\*Số Quyết định\*\*:\s*([^\n\r]+)/);
+      let qdcbPill = '';
+      if (matchSoQd && matchSoQd[1]) {
+        const rawQd = matchSoQd[1].trim();
+        if (rawQd && !rawQd.includes('Chưa cập nhật')) {
+          const soQdClean = rawQd.split('(')[0].split('—')[0].replace(/`/g, '').trim();
+          const qdUrlMatch = rawQd.match(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/);
+          if (soQdClean) {
+            if (qdUrlMatch && qdUrlMatch[1]) {
+              qdcbPill = `<a href="${escapeHtml(qdUrlMatch[1])}" target="_blank" rel="noopener noreferrer" class="meta-pill meta-pill-qdcb" style="padding: 4px 10px; font-size: 0.75rem;" title="Xem Quyết định công bố"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)} <i class="bi bi-box-arrow-up-right" style="font-size: 0.68rem;"></i></a>`;
+            } else {
+              qdcbPill = `<span class="meta-pill meta-pill-qdcb" style="padding: 4px 10px; font-size: 0.75rem;" title="Số Quyết định công bố"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</span>`;
+            }
+          }
+        }
+      }
+
+      if (mucDoPill || qdcbPill) {
         modalTitle.innerHTML = `
           <span>Chi tiết TTHC: ${escapeHtml(code)}</span>
           ${mucDoPill}
+          ${qdcbPill}
           <a href="${matchLink ? matchLink[1] : initialUrl}" id="modal-dvc-link-btn" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs modal-dvc-badge" title="Mở trang nộp hồ sơ trực tuyến" style="${(matchLink || initialUrl) ? '' : 'display: none;'}">
             <i class="bi bi-send-fill"></i> Nộp hồ sơ
           </a>

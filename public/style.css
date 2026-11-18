@@ -794,6 +794,19 @@ body {
   border: 1px solid rgba(56, 189, 248, 0.35);
   font-family: var(--font-mono);
 }
+.meta-pill-qdcb {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  text-decoration: none;
+  transition: var(--transition);
+}
+a.meta-pill-qdcb:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: rgba(245, 158, 11, 0.6);
+  color: #fde68a;
+  transform: translateY(-1px);
+}
 .meta-pill-cap {
   background: rgba(168, 85, 247, 0.15);
   color: #c084fc;
