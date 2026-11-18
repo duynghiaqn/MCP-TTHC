@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedKey = localStorage.getItem('mcp_tthc_api_key');
   if (urlApiKey) {
     apiKeyInput.value = urlApiKey;
-    try { localStorage.setItem('mcp_tthc_api_key', urlApiKey); } catch {}
+    try { localStorage.setItem('mcp_tthc_api_key', urlApiKey); } catch { }
   } else if (savedKey) {
     apiKeyInput.value = savedKey;
   } else {
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Helper: Đã tắt hiển thị tốc độ phản hồi / độ trễ (latency ms) theo yêu cầu giao diện
-  function updateLatencyDisplay(_latencyMs) {}
+  function updateLatencyDisplay(_latencyMs) { }
 
   // 2. Health check & Query Real Count (Không dùng mockup) & Đo tốc độ kết nối
   async function checkHealth() {
@@ -957,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Hero Summary Card (Thu gọn toàn bộ metadata dài dòng)
     html += '<div class="meta-summary-card">';
-    
+
     // Badges Bar: Mã TTHC, Số QĐCB, Cấp, Lĩnh vực, Mức độ DVCTT, Phí, Loại
     html += '<div class="meta-badges-bar">';
     if (code) {
@@ -1005,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Grid 4 ô thông tin cốt lõi
     html += '<div class="meta-summary-grid">';
-    
+
     if (coQuanThucHien) {
       html += `
         <div class="meta-grid-item">
@@ -1507,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Cập nhật link DVC theo URL trực tiếp từ kết quả
       const matchLink = md.match(/Cổng tiếp nhận hồ sơ[^:]*:\s*\[(?:[^\]]*)\]\((https?:\/\/[^)]+)\)/) ||
-                        md.match(/Link (?:TTHC gốc|DVC)[^:]*:\s*\[(?:[^\]]*)\]\((https?:\/\/[^)]+)\)/);
+        md.match(/Link (?:TTHC gốc|DVC)[^:]*:\s*\[(?:[^\]]*)\]\((https?:\/\/[^)]+)\)/);
       if (matchLink && matchLink[1]) {
         const btnLink = document.getElementById('modal-dvc-link-btn');
         if (btnLink) {
@@ -1522,11 +1522,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (matchMucDo && matchMucDo[1]) {
         const txt = matchMucDo[1];
         if (txt.includes('Toàn trình')) {
-          mucDoPill = '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;"><i class="bi bi-check-circle-fill"></i> DVCTT Toàn trình</span>';
+          mucDoPill = '<span class="modal-badge modal-badge-success"><i class="bi bi-check-circle-fill"></i> DVCTT Toàn trình</span>';
         } else if (txt.includes('Một phần')) {
-          mucDoPill = '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;"><i class="bi bi-lightning-charge-fill"></i> DVCTT Một phần</span>';
+          mucDoPill = '<span class="modal-badge modal-badge-warning"><i class="bi bi-lightning-charge-fill"></i> DVCTT Một phần</span>';
         } else if (txt.includes('Chưa cung cấp')) {
-          mucDoPill = '<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;"><i class="bi bi-building"></i> Chưa có DVCTT</span>';
+          mucDoPill = '<span class="modal-badge modal-badge-muted"><i class="bi bi-building"></i> Chưa có DVCTT</span>';
         }
       }
 
@@ -1538,7 +1538,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (rawQd && !rawQd.includes('Chưa cập nhật')) {
           const soQdClean = rawQd.split('(')[0].split('—')[0].replace(/`/g, '').trim();
           if (soQdClean) {
-            qdcbPill = `<button type="button" class="meta-pill meta-pill-qdcb btn-open-qdcb-modal" data-qdcb-id="${escapeHtml(soQdClean)}" style="padding: 4px 10px; font-size: 0.75rem; cursor: pointer;" title="Bấm để mở Modal Chi tiết QĐCB"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</button>`;
+            qdcbPill = `<button type="button" class="modal-badge meta-pill-qdcb btn-open-qdcb-modal" data-qdcb-id="${escapeHtml(soQdClean)}" style="cursor: pointer;" title="Bấm để mở Modal Chi tiết QĐCB"><i class="bi bi-file-earmark-check-fill"></i> QĐCB: ${escapeHtml(soQdClean)}</button>`;
           }
         }
       }
@@ -1626,10 +1626,10 @@ document.addEventListener('DOMContentLoaded', () => {
       modalTitle.innerHTML = `
         ${getModalBackBtnHtml()}
         <span>Quyết định công bố: ${escapeHtml(soQd)}</span>
-        <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+        <span class="modal-badge modal-badge-success">
           <i class="bi bi-check-circle-fill"></i> ${escapeHtml(trangThaiLabel)}
         </span>
-        <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+        <span class="modal-badge modal-badge-info">
           ${escapeHtml(loaiLabel)}
         </span>
         ${detail.url ? `
@@ -1879,14 +1879,14 @@ document.addEventListener('DOMContentLoaded', () => {
               </thead>
               <tbody>
                 ${items.map((item, idx) => {
-                  const itemLv = Array.isArray(item.linh_vuc) && item.linh_vuc.length > 0 ? item.linh_vuc.join(', ') : linhVuc;
-                  const isInactive = item.trang_thai === 'INACTIVE';
-                  const stLabel = isInactive ? 'Đã bãi bỏ' : 'Đang công bố';
-                  const stClass = isInactive ? 'qdcb-status-inactive' : 'qdcb-status-active';
-                  const effDate = item.ngay_hieu_luc && /^\d{4}-\d{2}-\d{2}/.test(item.ngay_hieu_luc)
-                    ? item.ngay_hieu_luc.slice(0, 10).split('-').reverse().join('/')
-                    : (item.ngay_hieu_luc || ngayHieuLuc);
-                  return `
+          const itemLv = Array.isArray(item.linh_vuc) && item.linh_vuc.length > 0 ? item.linh_vuc.join(', ') : linhVuc;
+          const isInactive = item.trang_thai === 'INACTIVE';
+          const stLabel = isInactive ? 'Đã bãi bỏ' : 'Đang công bố';
+          const stClass = isInactive ? 'qdcb-status-inactive' : 'qdcb-status-active';
+          const effDate = item.ngay_hieu_luc && /^\d{4}-\d{2}-\d{2}/.test(item.ngay_hieu_luc)
+            ? item.ngay_hieu_luc.slice(0, 10).split('-').reverse().join('/')
+            : (item.ngay_hieu_luc || ngayHieuLuc);
+          return `
                     <tr>
                       <td>${idx + 1}</td>
                       <td>
@@ -1910,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', () => {
                       </td>
                     </tr>
                   `;
-                }).join('')}
+        }).join('')}
               </tbody>
             </table>
           </div>
