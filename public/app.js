@@ -772,9 +772,136 @@ document.addEventListener('DOMContentLoaded', () => {
         viewportRendered.prepend(banner);
         banner.querySelector('.btn-view-qdcb-detail')?.addEventListener('click', () => openQDCBModal(qdId));
       }
+    } else if (
+      toolName === 'bien_dong_gia_lai' ||
+      toolName === 'phan_tich_bien_dong_gia_lai' ||
+      toolName === 'bien_dong_tthc_gia_lai'
+    ) {
+      renderGiaLaiChangesViewport(markdownText);
     } else {
       renderProcedureList(markdownText);
     }
+  }
+
+  function renderGiaLaiChangesViewport(markdownText) {
+    const lines = markdownText.split('\n');
+    let html = `
+      <div class="detail-dvc-banner" style="justify-content: space-between; margin-bottom: 14px; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <i class="bi bi-bar-chart-line-fill" style="color:#fbbf24;"></i>
+          <span>Xem bảng phân tích tương tác Tăng/Giảm TTHC &amp; TTHC Nội bộ Gia Lai</span>
+        </div>
+        <button type="button" class="btn btn-primary btn-xs btn-open-bdgl-modal">
+          <i class="bi bi-window-fullscreen"></i> Mở Modal Phân Tích
+        </button>
+      </div>
+    `;
+
+    let inTable = false;
+    let tableRows = [];
+    let currentCard = null;
+
+    const flushTable = () => {
+      if (!inTable || tableRows.length === 0) return;
+      const headerCells = tableRows[0];
+      const bodyRows = tableRows.slice(2); // skip |---| separator
+      html += `<div class="qdcb-table-wrap" style="margin-bottom: 14px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;"><table class="qdcb-table"><thead><tr>`;
+      headerCells.forEach(c => {
+        html += `<th>${formatInlineMd(c)}</th>`;
+      });
+      html += `</tr></thead><tbody>`;
+      bodyRows.forEach(r => {
+        html += `<tr>`;
+        r.forEach(c => {
+          html += `<td>${formatInlineMd(c)}</td>`;
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table></div>`;
+      inTable = false;
+      tableRows = [];
+    };
+
+    const flushCard = () => {
+      if (!currentCard) return;
+      const isTang = currentCard.title.includes('TĂNG');
+      const isGiam = currentCard.title.includes('GIẢM');
+      const badgeCls = isTang ? 'badge-success' : isGiam ? 'badge-danger' : 'badge-warning';
+      const badgeTxt = isTang ? 'Tăng (Mới)' : isGiam ? 'Giảm (Bỏ)' : 'Sửa đổi';
+      html += `
+        <div class="rendered-item-card">
+          <div class="rendered-item-header">
+            <div class="rendered-item-title">${formatInlineMd(currentCard.title)}</div>
+            <span class="badge ${badgeCls}">${badgeTxt}</span>
+          </div>
+          <div class="rendered-item-meta">
+            ${currentCard.meta.map(m => `<span>${formatInlineMd(m)}</span>`).join('')}
+          </div>
+          <div class="rendered-item-actions">
+            ${currentCard.code ? `<button type="button" class="btn btn-primary btn-xs btn-view-detail" data-code="${escapeHtml(currentCard.code)}"><i class="bi bi-file-earmark-text"></i> Chi tiết TTHC (${escapeHtml(currentCard.code)})</button>` : ''}
+            ${currentCard.url ? `<a href="${escapeHtml(currentCard.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs"><i class="bi bi-box-arrow-up-right"></i> DVCQG</a>` : ''}
+          </div>
+        </div>
+      `;
+      currentCard = null;
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line.startsWith('|')) {
+        flushCard();
+        inTable = true;
+        const cells = line.slice(1, -1).split('|').map(s => s.trim());
+        tableRows.push(cells);
+        continue;
+      }
+      flushTable();
+
+      if (!line || line === '---') {
+        flushCard();
+        continue;
+      }
+
+      if (line.startsWith('# ')) {
+        flushCard();
+        html += `<h2 class="section-title" style="margin-bottom: 6px;">${formatInlineMd(line.slice(2))}</h2>`;
+      } else if (line.startsWith('## ')) {
+        flushCard();
+        html += `<h3 class="section-title" style="margin: 14px 0 8px 0; font-size: 1rem;">${formatInlineMd(line.slice(3))}</h3>`;
+      } else if (line.startsWith('### ')) {
+        flushCard();
+        html += `<h4 class="section-title" style="margin: 12px 0 8px 0; font-size: 0.92rem;">${formatInlineMd(line.slice(4))}</h4>`;
+      } else if (line.startsWith('> ')) {
+        flushCard();
+        html += `<p class="section-desc" style="margin-bottom: 10px;">${formatInlineMd(line.slice(2))}</p>`;
+      } else if (/^\d+\.\s+/.test(line)) {
+        flushCard();
+        const title = line.replace(/^\d+\.\s+/, '');
+        const codeMatch = title.match(/\[([^\]]+)\]/);
+        currentCard = { title, code: codeMatch ? codeMatch[1] : '', meta: [], url: '' };
+      } else if (currentCard && line.startsWith('- ')) {
+        const linkMatch = line.match(/\((https?:\/\/[^)]+)\)/);
+        if (line.includes('Link DVCQG') && linkMatch) {
+          currentCard.url = linkMatch[1];
+        } else {
+          currentCard.meta.push(line.slice(2));
+        }
+      } else if (line.startsWith('- ')) {
+        html += `<div style="font-size: 0.86rem; color: var(--text-muted); margin: 4px 0 4px 8px;">• ${formatInlineMd(line.slice(2))}</div>`;
+      } else {
+        html += `<p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 6px;">${formatInlineMd(line)}</p>`;
+      }
+    }
+    flushTable();
+    flushCard();
+
+    viewportRendered.innerHTML = html;
+    viewportRendered.querySelector('.btn-open-bdgl-modal')?.addEventListener('click', () => openGiaLaiChangesModal());
+    viewportRendered.querySelectorAll('.btn-view-detail').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.code) openDetailModal(btn.dataset.code);
+      });
+    });
   }
 
   function renderProcedureList(markdownText) {
@@ -1412,6 +1539,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const prev = modalNavHistory.pop();
       if (prev) {
         if (prev.type === 'qdcb') openQDCBModal(prev.id, true);
+        else if (prev.type === 'bdgl') openGiaLaiChangesModal(true);
         else if (prev.type === 'tthc') openDetailModal(prev.id, true);
       }
       return;
@@ -1753,6 +1881,218 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       modalBody.innerHTML = `<p style="color: #f43f5e;">Lỗi tải chi tiết QĐCB: ${escapeHtml(err.message)}</p>`;
     }
+  }
+
+  async function openGiaLaiChangesModal(isBack = false) {
+    const nhom = document.getElementById('select-bdgl-nhom')?.value || 'tat_ca';
+    const loai = document.getElementById('select-bdgl-loai')?.value || 'tat_ca';
+    const cap = document.getElementById('select-bdgl-cap')?.value || 'tat_ca';
+    const kw = document.getElementById('input-bdgl-keyword')?.value.trim() || '';
+    const stateId = `${nhom}|${loai}|${cap}|${kw}`;
+
+    if (!isBack && modal.style.display === 'flex' && currentModalState && !(currentModalState.type === 'bdgl' && currentModalState.id === stateId)) {
+      modalNavHistory.push(currentModalState);
+    }
+    currentModalState = { type: 'bdgl', id: stateId };
+
+    modal.style.display = 'flex';
+    currentModalMarkdown = '';
+    currentModalCode = 'BienDong-GiaLai';
+
+    if (modalBody) modalBody.style.display = 'block';
+    if (modalMarkdownViewport) modalMarkdownViewport.style.display = 'none';
+    if (btnModalModeRendered) btnModalModeRendered.classList.add('active');
+    if (btnModalModeMarkdown) btnModalModeMarkdown.classList.remove('active');
+    if (modalViewToggle) modalViewToggle.style.display = 'none';
+    if (btnModalCopyMd) btnModalCopyMd.style.display = 'none';
+    if (btnModalDownloadMd) btnModalDownloadMd.style.display = 'none';
+
+    modalTitle.innerHTML = `${getModalBackBtnHtml()}<span>Phân tích Biến động TTHC Tỉnh Gia Lai</span>`;
+    modalBody.innerHTML = `
+      <div class="loader-container">
+        <div class="spinner"></div>
+        <p>Đang tải dữ liệu phân tích tăng/giảm TTHC &amp; TTHC Nội bộ Gia Lai...</p>
+      </div>
+    `;
+
+    const apiKey = getActiveApiKey();
+    const keyQuery = apiKey ? `&api-key=${encodeURIComponent(apiKey)}` : '';
+    const paramsQuery = `nhom=${encodeURIComponent(nhom)}&loai_bien_dong=${encodeURIComponent(loai)}&cap=${encodeURIComponent(cap)}${kw ? `&tu_khoa=${encodeURIComponent(kw)}` : ''}&limit=50&dinh_dang=json${keyQuery}`;
+
+    try {
+      const res = await fetch(`${currentOrigin}/api/tthc/bien-dong-gia-lai?${paramsQuery}`);
+      const data = await res.json();
+
+      if (!res.ok || !data || !data.overview) {
+        modalBody.innerHTML = `<p style="color: #f43f5e;">${escapeHtml(data?.error || 'Không thể tải dữ liệu phân tích biến động Gia Lai.')}</p>`;
+        return;
+      }
+
+      currentModalMarkdown = data.markdown || '';
+      if (modalMarkdownCode) modalMarkdownCode.textContent = currentModalMarkdown;
+
+      const s = data.overview;
+      const net = s.net_change || 0;
+      const netText = net > 0 ? `+${net}` : `${net}`;
+
+      modalTitle.innerHTML = `
+        ${getModalBackBtnHtml()}
+        <span>Biến động TTHC Gia Lai</span>
+        <span class="modal-badge modal-badge-success"><i class="bi bi-graph-up-arrow"></i> +${s.added_count || 0} Tăng</span>
+        <span class="modal-badge modal-badge-warning"><i class="bi bi-graph-down-arrow"></i> -${s.removed_count || 0} Giảm</span>
+        <span class="modal-badge modal-badge-info">Ròng: ${netText}</span>
+      `;
+
+      modalBody.innerHTML = renderGiaLaiChangesModalHtml(data);
+
+      const tabBtns = modalBody.querySelectorAll('.qdcb-tab-btn');
+      const rows = modalBody.querySelectorAll('.bdgl-row');
+      const searchInput = modalBody.querySelector('.qdcb-table-search');
+
+      const applyModalFilters = () => {
+        const activeTab = modalBody.querySelector('.qdcb-tab-btn.active')?.dataset.tab || 'all';
+        const q = (searchInput?.value || '').trim().toLowerCase();
+        rows.forEach(row => {
+          const typeMatch =
+            activeTab === 'all' ||
+            (activeTab === 'tang' && row.dataset.change === 'added') ||
+            (activeTab === 'giam' && row.dataset.change === 'removed') ||
+            (activeTab === 'noi_bo' && row.dataset.group === 'noi_bo') ||
+            (activeTab === 'hanh_chinh' && row.dataset.group === 'hanh_chinh');
+          const textMatch = !q || row.textContent.toLowerCase().includes(q);
+          row.style.display = typeMatch && textMatch ? '' : 'none';
+        });
+      };
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          applyModalFilters();
+        });
+      });
+
+      searchInput?.addEventListener('input', applyModalFilters);
+
+      modalBody.querySelectorAll('.qdcb-tthc-code-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.dataset.tthcCode;
+          if (code) openDetailModal(code);
+        });
+      });
+
+      if (modalViewToggle) modalViewToggle.style.display = 'inline-flex';
+      if (btnModalCopyMd) btnModalCopyMd.style.display = 'inline-flex';
+      if (btnModalDownloadMd) btnModalDownloadMd.style.display = 'inline-flex';
+    } catch (err) {
+      modalBody.innerHTML = `<p style="color: #f43f5e;">Lỗi tải dữ liệu phân tích Gia Lai: ${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  function renderGiaLaiChangesModalHtml(data) {
+    const s = data.overview || {};
+    const admin = s.administrative || { current_total: 0, added_count: 0, removed_count: 0, modified_count: 0 };
+    const internal = s.internal || { current_total: 0, added_count: 0, removed_count: 0, modified_count: 0 };
+    const lb = s.level_breakdown;
+    const items = data.items || [];
+
+    const fmtNet = (n) => (n > 0 ? `+${n}` : `${n}`);
+    const adminNet = (admin.added_count || 0) - (admin.removed_count || 0);
+    const internalNet = (internal.added_count || 0) - (internal.removed_count || 0);
+
+    const tangCount = items.filter(x => x.change_type === 'added').length;
+    const giamCount = items.filter(x => x.change_type === 'removed').length;
+    const noiBoCount = items.filter(x => Boolean(x.is_noi_bo) || (x.nhom_thu_tuc || '').toLowerCase().includes('nội bộ')).length;
+    const hanhChinhCount = items.length - noiBoCount;
+
+    return `
+      <div class="qdcb-modal-view">
+        <div class="qdcb-note-box">
+          <i class="bi bi-clock-history"></i>
+          <div>
+            Đối soát lúc <strong>${escapeHtml(data.compared_at || '')}</strong> từ <code>Crawler-TTHC/data-gl</code> •
+            Toàn tỉnh: <strong>${s.previous_total ?? '-'}</strong> → <strong>${s.current_total ?? '-'}</strong> thủ tục (Ròng <strong>${fmtNet(s.net_change || 0)}</strong>)
+          </div>
+        </div>
+
+        <div class="qdcb-stats-row">
+          <span class="qdcb-stat-pill">Tổng hiện tại: <strong>${s.current_total ?? 0}</strong></span>
+          <span class="qdcb-stat-pill qdcb-stat-new">TTHC Hành chính: <strong>${admin.current_total}</strong> (+${admin.added_count} / -${admin.removed_count}, ${fmtNet(adminNet)})</span>
+          <span class="qdcb-stat-pill qdcb-stat-edit">TTHC Nội bộ: <strong>${internal.current_total}</strong> (+${internal.added_count} / -${internal.removed_count}, ${fmtNet(internalNet)})</span>
+          ${lb ? `<span class="qdcb-stat-pill">Cấp tỉnh: <strong>${lb.province_total}</strong> | Cấp xã: <strong>${lb.ward_total}</strong></span>` : ''}
+        </div>
+
+        <div class="qdcb-tabs-card">
+          <div class="qdcb-tabs">
+            <button type="button" class="qdcb-tab-btn active" data-tab="all">
+              Tất cả <span class="qdcb-tab-count">${items.length}</span>
+            </button>
+            <button type="button" class="qdcb-tab-btn" data-tab="tang">
+              Tăng (Mới) <span class="qdcb-tab-count">${tangCount}</span>
+            </button>
+            <button type="button" class="qdcb-tab-btn" data-tab="giam">
+              Giảm (Bỏ) <span class="qdcb-tab-count">${giamCount}</span>
+            </button>
+            <button type="button" class="qdcb-tab-btn" data-tab="noi_bo">
+              TTHC Nội bộ <span class="qdcb-tab-count">${noiBoCount}</span>
+            </button>
+            <button type="button" class="qdcb-tab-btn" data-tab="hanh_chinh">
+              TTHC Hành chính <span class="qdcb-tab-count">${hanhChinhCount}</span>
+            </button>
+          </div>
+
+          <div class="qdcb-table-toolbar">
+            <div class="qdcb-table-search-wrap">
+              <i class="bi bi-search"></i>
+              <input type="text" class="qdcb-table-search" placeholder="Tìm nhanh theo mã TTHC, tên thủ tục, lĩnh vực, cơ quan...">
+            </div>
+          </div>
+
+          <div class="qdcb-table-wrap">
+            ${items.length === 0 ? `<div class="qdcb-empty-tab">Không có thủ tục biến động nào khớp với bộ lọc.</div>` : `
+            <table class="qdcb-table">
+              <thead>
+                <tr>
+                  <th>Biến động</th>
+                  <th>Mã TTHC</th>
+                  <th>Tên thủ tục &amp; Nhóm</th>
+                  <th>Cấp &amp; Lĩnh vực</th>
+                  <th>Cơ quan thực hiện</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map(item => {
+                  const isNB = Boolean(item.is_noi_bo) || (item.nhom_thu_tuc || '').toLowerCase().includes('nội bộ');
+                  const isTang = item.change_type === 'added';
+                  const isGiam = item.change_type === 'removed';
+                  const badgeCls = isTang ? 'qdcb-status-active' : isGiam ? 'qdcb-status-inactive' : 'modal-badge-warning';
+                  const badgeTxt = isTang ? '+ Tăng' : isGiam ? '- Giảm' : '~ Sửa';
+                  return `
+                    <tr class="bdgl-row" data-change="${escapeHtml(item.change_type || 'added')}" data-group="${isNB ? 'noi_bo' : 'hanh_chinh'}">
+                      <td><span class="qdcb-status-badge ${badgeCls}">${badgeTxt}</span></td>
+                      <td>
+                        <button type="button" class="qdcb-tthc-code-btn" data-tthc-code="${escapeHtml(item.code || '')}" title="Bấm để xem chi tiết TTHC">
+                          ${escapeHtml(item.code || '')}
+                        </button>
+                      </td>
+                      <td>
+                        <div style="font-weight: 600; margin-bottom: 3px;">${escapeHtml(item.name || '')}</div>
+                        <span class="modal-badge ${isNB ? 'modal-badge-info' : 'modal-badge-muted'}">${isNB ? 'TTHC Nội bộ' : 'TTHC Hành chính'}</span>
+                      </td>
+                      <td>
+                        <div>${escapeHtml(item.level_label || 'Chưa rõ')}</div>
+                        <div style="color: var(--text-dim); font-size: var(--modal-fs-label);">${escapeHtml(item.category || 'Chưa rõ')}</div>
+                      </td>
+                      <td>${escapeHtml(item.executingAgencies || item.agency || item.departmentPromulgate || 'Chưa rõ')}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>`}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   function renderQDCBModalHtml(detail) {
