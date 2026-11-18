@@ -119,6 +119,68 @@ export const TraCuuChiTietSchema = z.object({
     )
 });
 
+export const TraCuuQdcbSchema = z.object({
+  tu_khoa: z
+    .string()
+    .optional()
+    .describe('Từ khóa tìm kiếm trong trích yếu, số quyết định, cơ quan hoặc lĩnh vực QĐCB'),
+  so_quyet_dinh: z
+    .string()
+    .optional()
+    .describe('Số Quyết định công bố (ví dụ: "807/QĐ-TTCP", "4045/QĐ-UBND")'),
+  co_quan_ban_hanh: z
+    .string()
+    .optional()
+    .describe('Tên cơ quan ban hành quyết định (ví dụ: "Thanh tra Chính phủ", "Bộ Tư pháp", "UBND tỉnh Gia Lai", "UBND tỉnh Khánh Hòa")'),
+  linh_vuc: z
+    .string()
+    .optional()
+    .describe('Lĩnh vực quản lý của QĐCB (ví dụ: "Hộ tịch", "Đất đai", "Phòng, chống tham nhũng")'),
+  nam: z
+    .number()
+    .optional()
+    .describe('Lọc theo năm ban hành/công bố (ví dụ: 2026)'),
+  thang: z
+    .string()
+    .optional()
+    .describe('Lọc theo tháng cụ thể định dạng YYYY-MM (ví dụ: "2026-11")'),
+  moi_trong_thang: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('true: Lấy danh sách các Quyết định công bố mới nhất trong tháng hiện tại'),
+  limit: z
+    .number()
+    .min(1)
+    .max(50)
+    .optional()
+    .default(10)
+    .describe('Số lượng kết quả trên mỗi trang (1-50, mặc định: 10)'),
+  page: z
+    .number()
+    .min(1)
+    .optional()
+    .default(1)
+    .describe('Trang kết quả (mặc định: 1)'),
+  dinh_dang: z
+    .enum(['markdown', 'json'])
+    .optional()
+    .default('markdown')
+    .describe('Định dạng kết quả: "markdown" hoặc "json"')
+});
+
+export const ChiTietQdcbSchema = z.object({
+  so_hoac_id_qdcb: z
+    .string()
+    .min(1, 'Số quyết định hoặc UUID không được để trống')
+    .describe('Số Quyết định công bố (ví dụ: "807/QĐ-TTCP") hoặc UUID định danh QĐCB'),
+  dinh_dang: z
+    .enum(['markdown', 'json'])
+    .optional()
+    .default('markdown')
+    .describe('Định dạng kết quả: "markdown" (đầy đủ trích yếu & danh sách TTHC kèm theo) hoặc "json"')
+});
+
 export const TimKiemTheoTenSchema = z.object({
   ten_tthc: z
     .string()
@@ -818,6 +880,109 @@ export function createTTHCMcpServer(): McpServer {
     noiBoGiaLaiHandler
   );
 
+  // TOOL: Tra cứu Quyết định công bố (QĐCB)
+  const qdcbSearchHandler = async (params: z.infer<typeof TraCuuQdcbSchema>) => {
+    const result = await tthcDataService.searchQDCB({
+      tu_khoa: params.tu_khoa,
+      so_quyet_dinh: params.so_quyet_dinh,
+      co_quan_ban_hanh: params.co_quan_ban_hanh,
+      linh_vuc: params.linh_vuc,
+      nam: params.nam,
+      thang: params.thang,
+      moi_trong_thang: params.moi_trong_thang,
+      limit: params.limit,
+      page: params.page,
+      dinh_dang: params.dinh_dang
+    });
+
+    if (params.dinh_dang === 'json') {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2)
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: result.markdown
+        }
+      ]
+    };
+  };
+
+  server.tool(
+    'tra_cuu_quyet_dinh_cong_bo',
+    'Tra cứu danh mục Quyết định công bố (QĐCB) thủ tục hành chính từ nguồn Crawler-TTHC/qdcb (gồm ~2,000 QĐCB cấp Bộ, Tỉnh trên toàn quốc). Hỗ trợ tìm theo từ khóa trích yếu, số quyết định (vd: 807/QĐ-TTCP), cơ quan ban hành, lĩnh vực, năm/tháng hoặc lấy danh sách QĐCB mới ban hành trong tháng.',
+    TraCuuQdcbSchema.shape,
+    qdcbSearchHandler
+  );
+
+  server.tool(
+    'tra_cuu_qdcb',
+    'Tra cứu Quyết định công bố TTHC (alias rút gọn của tra_cuu_quyet_dinh_cong_bo).',
+    TraCuuQdcbSchema.shape,
+    qdcbSearchHandler
+  );
+
+  server.tool(
+    'tim_kiem_qdcb',
+    'Tìm kiếm Quyết định công bố TTHC (alias của tra_cuu_quyet_dinh_cong_bo).',
+    TraCuuQdcbSchema.shape,
+    qdcbSearchHandler
+  );
+
+  // TOOL: Xem chi tiết Quyết định công bố (QĐCB) và danh sách TTHC kèm theo
+  const qdcbDetailHandler = async (params: z.infer<typeof ChiTietQdcbSchema>) => {
+    const result = await tthcDataService.getQDCBDetail(params.so_hoac_id_qdcb, params.dinh_dang);
+
+    if (params.dinh_dang === 'json') {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result.data || result, null, 2)
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: result.markdown
+        }
+      ]
+    };
+  };
+
+  server.tool(
+    'chi_tiet_quyet_dinh_cong_bo',
+    'Lấy thông tin chi tiết toàn văn Quyết định công bố (QĐCB) theo Số quyết định (vd: 807/QĐ-TTCP) hoặc UUID, bao gồm trích yếu, cơ quan ban hành, ngày ký, ngày công khai và toàn bộ danh sách các Thủ tục hành chính kèm theo (Công bố mới, Sửa đổi bổ sung, Bãi bỏ, Thay thế).',
+    ChiTietQdcbSchema.shape,
+    qdcbDetailHandler
+  );
+
+  server.tool(
+    'chi_tiet_qdcb',
+    'Xem chi tiết Quyết định công bố và các TTHC đính kèm (alias của chi_tiet_quyet_dinh_cong_bo).',
+    ChiTietQdcbSchema.shape,
+    qdcbDetailHandler
+  );
+
+  server.tool(
+    'lay_qdcb_theo_so',
+    'Lấy chi tiết Quyết định công bố theo Số quyết định (alias của chi_tiet_quyet_dinh_cong_bo).',
+    ChiTietQdcbSchema.shape,
+    qdcbDetailHandler
+  );
+
   // TOOL 9: `search` chuẩn OpenAI (bắt buộc cho ChatGPT Deep Research / Company Knowledge connectors)
   server.tool(
     'search',
@@ -970,8 +1135,8 @@ export async function executeJsonRpcMessage(message: unknown): Promise<unknown> 
   // (trước đây bị treo 30 giây rồi lỗi 500 -> làm hỏng handshake của OpenAI / Codex / Claude)
   if (isJsonRpcNotificationOrResponse(message)) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await clientTransport.send(message as any).catch(() => {});
-    await mcpServer.close().catch(() => {});
+    await clientTransport.send(message as any).catch(() => { });
+    await mcpServer.close().catch(() => { });
     return null;
   }
 
@@ -987,7 +1152,7 @@ export async function executeJsonRpcMessage(message: unknown): Promise<unknown> 
         return;
       }
       clearTimeout(timeout);
-      mcpServer.close().catch(() => {});
+      mcpServer.close().catch(() => { });
       // Chuẩn hóa schema cho tất cả các tools nếu đây là phản hồi tools/list
       // Đảm bảo không bao giờ bị lỗi thiếu schema trên bất kỳ client nào (Claude, Cursor, OpenAI, Dify, v.v.)
       const res = responseMsg as {
@@ -1119,12 +1284,12 @@ export function getOpenAiMcpConfig(baseUrl = 'https://mcp-tthc.netlify.app') {
   const cleanBase = baseUrl.replace(/\/+$/, '');
   const authConfig = isAuthRequired()
     ? {
-        type: 'api_key',
-        headerScheme: 'bearer'
-      }
+      type: 'api_key',
+      headerScheme: 'bearer'
+    }
     : {
-        type: 'none'
-      };
+      type: 'none'
+    };
 
   return {
     $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json',

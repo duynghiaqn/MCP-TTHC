@@ -882,7 +882,72 @@ async function runTests() {
   console.assert(Boolean(liveApiJson.markdown), 'Kết quả API live phải có markdown');
   console.log('[PASS] REST API /api/tthc/live thực thi thành công trả về dữ liệu Live chuẩn xác!\n');
 
-  console.log('[SUCCESS] TẤT CẢ 31 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
+  // TEST 32: Kiểm tra nạp dữ liệu Index QĐCB từ Crawler-TTHC/qdcb
+  console.log('--- TEST 32: Kiểm tra nạp dữ liệu QĐCB (Crawler-TTHC/qdcb) ---');
+  const qdcbIndex = await tthcDataService.loadQDCBIndex();
+  console.assert(Array.isArray(qdcbIndex) && qdcbIndex.length > 1000, `Phải tải được > 1000 QĐCB, nhận: ${qdcbIndex.length}`);
+  console.log(`[PASS] Đã tải thành công ${qdcbIndex.length} Quyết định công bố!\n`);
+
+  // TEST 33: Kiểm tra Tool MCP tra_cuu_quyet_dinh_cong_bo
+  console.log('--- TEST 33: Kiểm tra Tool tra_cuu_quyet_dinh_cong_bo ---');
+  const qdcbSearchRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 331,
+      method: 'tools/call',
+      params: {
+        name: 'tra_cuu_quyet_dinh_cong_bo',
+        arguments: {
+          so_quyet_dinh: '807/QĐ-TTCP',
+          dinh_dang: 'json'
+        }
+      }
+    })
+  });
+  const qdcbSearchRpcRes = await netlifyHandler(qdcbSearchRpcReq, {} as any);
+  console.assert(qdcbSearchRpcRes.status === 200, `tra_cuu_quyet_dinh_cong_bo phải trả về 200, nhận: ${qdcbSearchRpcRes.status}`);
+  const qdcbSearchData = JSON.parse(((await qdcbSearchRpcRes.json()) as any).result?.content?.[0]?.text || '{}');
+  console.assert(qdcbSearchData.total >= 1, 'Phải tìm thấy ít nhất 1 QĐCB cho số 807/QĐ-TTCP');
+  console.log('[PASS] Tool tra_cuu_quyet_dinh_cong_bo hoạt động chính xác!\n');
+
+  // TEST 34: Kiểm tra Tool MCP chi_tiet_quyet_dinh_cong_bo
+  console.log('--- TEST 34: Kiểm tra Tool chi_tiet_quyet_dinh_cong_bo ---');
+  const qdcbDetailRpcReq = new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 341,
+      method: 'tools/call',
+      params: {
+        name: 'chi_tiet_quyet_dinh_cong_bo',
+        arguments: {
+          so_hoac_id_qdcb: '807/QĐ-TTCP',
+          dinh_dang: 'markdown'
+        }
+      }
+    })
+  });
+  const qdcbDetailRpcRes = await netlifyHandler(qdcbDetailRpcReq, {} as any);
+  console.assert(qdcbDetailRpcRes.status === 200, `chi_tiet_quyet_dinh_cong_bo phải trả về 200, nhận: ${qdcbDetailRpcRes.status}`);
+  const qdcbDetailMd = ((await qdcbDetailRpcRes.json()) as any).result?.content?.[0]?.text || '';
+  console.assert(qdcbDetailMd.includes('807/QĐ-TTCP'), 'Chi tiết QĐCB phải chứa số quyết định');
+  console.assert(qdcbDetailMd.includes('Thủ tục Công bố mới') || qdcbDetailMd.includes('2.002949'), 'Chi tiết QĐCB phải chứa danh sách TTHC đính kèm');
+  console.log('[PASS] Tool chi_tiet_quyet_dinh_cong_bo trích xuất toàn văn & danh sách TTHC kèm theo thành công!\n');
+
+  // TEST 35: Kiểm tra REST API QĐCB (/api/qdcb/search, /api/qdcb/detail, /api/qdcb/monthly)
+  console.log('--- TEST 35: Kiểm tra REST API /api/qdcb/* ---');
+  const qdcbApiSearchRes = await netlifyHandler(new Request('http://localhost:3000/api/qdcb/search?so=807/Q%C4%90-TTCP&api-key=secret_test_key_123'), {} as any);
+  console.assert(qdcbApiSearchRes.status === 200, 'GET /api/qdcb/search phải trả về 200');
+  const qdcbApiDetailRes = await netlifyHandler(new Request('http://localhost:3000/api/qdcb/detail?id=807/Q%C4%90-TTCP&api-key=secret_test_key_123'), {} as any);
+  console.assert(qdcbApiDetailRes.status === 200, 'GET /api/qdcb/detail phải trả về 200');
+  const qdcbApiMonthlyRes = await netlifyHandler(new Request('http://localhost:3000/api/qdcb/monthly?api-key=secret_test_key_123'), {} as any);
+  console.assert(qdcbApiMonthlyRes.status === 200, 'GET /api/qdcb/monthly phải trả về 200');
+  console.log('[PASS] Toàn bộ REST API /api/qdcb/* hoạt động chính xác 100%!\n');
+
+  console.log('[SUCCESS] TẤT CẢ 35 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
 }
 
 runTests().catch(err => {

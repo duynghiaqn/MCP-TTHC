@@ -248,6 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. Dynamic Tool Parameters Form Switching
   const paramGroups = {
+    tra_cuu_quyet_dinh_cong_bo: document.getElementById('params-tra_cuu_quyet_dinh_cong_bo'),
+    chi_tiet_quyet_dinh_cong_bo: document.getElementById('params-chi_tiet_quyet_dinh_cong_bo'),
     tra_cuu_tthc_gia_lai: document.getElementById('params-tra_cuu_tthc_gia_lai'),
     tra_cuu_tthc_noi_bo_gia_lai: document.getElementById('params-tra_cuu_tthc_noi_bo_gia_lai'),
     tra_cuu_tthc_noi_bo: document.getElementById('params-tra_cuu_tthc_noi_bo'),
@@ -270,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (
+      selected === 'chi_tiet_quyet_dinh_cong_bo' ||
       selected === 'tra_cuu_theo_ma_tthc' ||
       selected === 'goi_y_thu_tuc_lien_quan' ||
       selected === 'thong_tin_mcp_server'
@@ -409,6 +412,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Quick chips cho QĐCB
+  document.querySelectorAll('.btn-chip[data-fill-qdcb-so]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const so = chip.dataset.fillQdcbSo;
+      const inputEl = document.getElementById('input-qdcb-so');
+      if (inputEl && so !== undefined) inputEl.value = so;
+    });
+  });
+  document.querySelectorAll('.btn-chip[data-fill-qdcb-coquan]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cq = chip.dataset.fillQdcbCoquan;
+      const inputEl = document.getElementById('input-qdcb-coquan');
+      if (inputEl && cq !== undefined) inputEl.value = cq;
+    });
+  });
+  document.querySelectorAll('.btn-chip[data-fill-qdcb-monthly]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const val = chip.dataset.fillQdcbMonthly;
+      const selectEl = document.getElementById('select-qdcb-monthly');
+      if (selectEl && val !== undefined) selectEl.value = val;
+    });
+  });
+  document.querySelectorAll('.btn-chip[data-fill-qdcb-detail]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const val = chip.dataset.fillQdcbDetail;
+      const inputEl = document.getElementById('input-qdcb-detail-id');
+      if (inputEl && val !== undefined) inputEl.value = val;
+    });
+  });
+
   // 5. Tool Execution via MCP JSON-RPC
   toolForm.addEventListener('submit', async e => {
     e.preventDefault();
@@ -423,7 +456,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let args = customArgs || {};
     if (!customArgs) {
-      if (toolName === 'tra_cuu_tthc_gia_lai' || toolName === 'tthc_gia_lai') {
+      if (toolName === 'tra_cuu_quyet_dinh_cong_bo' || toolName === 'tra_cuu_qdcb' || toolName === 'tim_kiem_qdcb') {
+        const kw = document.getElementById('input-qdcb-keyword')?.value.trim();
+        const so = document.getElementById('input-qdcb-so')?.value.trim();
+        const cq = document.getElementById('input-qdcb-coquan')?.value.trim();
+        const lv = document.getElementById('input-qdcb-linhvuc')?.value.trim();
+        const isMonthly = document.getElementById('select-qdcb-monthly')?.value === 'true';
+        args = {
+          tu_khoa: kw || undefined,
+          so_quyet_dinh: so || undefined,
+          co_quan_ban_hanh: cq || undefined,
+          linh_vuc: lv || undefined,
+          moi_trong_thang: isMonthly,
+          limit,
+          page,
+          dinh_dang: 'markdown'
+        };
+      } else if (toolName === 'chi_tiet_quyet_dinh_cong_bo' || toolName === 'chi_tiet_qdcb' || toolName === 'lay_qdcb_theo_so') {
+        const id = document.getElementById('input-qdcb-detail-id')?.value.trim();
+        const format = document.getElementById('select-qdcb-detail-format')?.value || 'markdown';
+        args = {
+          so_hoac_id_qdcb: id,
+          dinh_dang: format
+        };
+      } else if (toolName === 'tra_cuu_tthc_gia_lai' || toolName === 'tthc_gia_lai') {
         const kw = document.getElementById('input-gialai-keyword')?.value.trim();
         const code = document.getElementById('input-gialai-code')?.value.trim();
         const cap = document.getElementById('select-gialai-cap')?.value;

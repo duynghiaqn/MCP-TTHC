@@ -333,5 +333,71 @@ export interface LiveFormalityResult {
   error?: string;
 }
 
+export interface QDCBItem {
+  id: string;
+  so_quyet_dinh: string;
+  trich_yeu: string;
+  ngay_quyet_dinh: string;
+  decision_date_ts?: number;
+  ngay_cong_bo: string;
+  publication_date_ts?: number;
+  created_at_ts?: number;
+  updated_at_ts?: number;
+  co_quan_ban_hanh: string;
+  ma_co_quan?: string;
+  linh_vuc: string[];
+  loai_quyet_dinh?: string;
+  trang_thai?: string;
+  tep_dinh_kem?: Array<{ name?: string; url?: string }>;
+  url: string;
+}
+
+export interface QDCBAttachedTTHCItem {
+  id: string;
+  ma_tthc: string;
+  ten_tthc: string;
+  linh_vuc?: string[];
+  ngay_hieu_luc?: string;
+  trang_thai?: string;
+  url?: string;
+}
+
+export interface QDCBAttachedTTHC {
+  cong_khai_moi?: { count: number; items: QDCBAttachedTTHCItem[] };
+  sua_doi_bo_sung?: { count: number; items: QDCBAttachedTTHCItem[] };
+  bai_bo?: { count: number; items: QDCBAttachedTTHCItem[] };
+  thay_the?: { count: number; items: QDCBAttachedTTHCItem[] };
+  dieu_chinh?: { count: number; items: QDCBAttachedTTHCItem[] };
+}
+
+export interface QDCBDetail extends QDCBItem {
+  fetched_at?: string;
+  thong_tin_chi_tiet?: Record<string, unknown>;
+  tthc_kem_theo?: QDCBAttachedTTHC;
+}
+
+export interface QDCBSearchParams {
+  tu_khoa?: string;
+  so_quyet_dinh?: string;
+  co_quan_ban_hanh?: string;
+  linh_vuc?: string;
+  nam?: number;
+  thang?: string;
+  moi_trong_thang?: boolean;
+  limit?: number;
+  page?: number;
+  dinh_dang?: 'markdown' | 'json';
+}
+
+export interface QDCBSearchResult {
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  data: QDCBItem[];
+  markdown: string;
+}
+
+
 
 

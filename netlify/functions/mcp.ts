@@ -844,6 +844,75 @@ export default async (req: Request, _context: Context): Promise<Response> => {
     }
   }
 
+  // 9. REST API Endpoints cho Quyết định công bố (QĐCB): /api/qdcb/*
+  if (cleanPath.startsWith('/api/qdcb')) {
+    const subPath = cleanPath.replace('/api/qdcb', '');
+
+    let postBody: Record<string, any> = {};
+    if (req.method === 'POST') {
+      try {
+        postBody = (await req.json()) as Record<string, any>;
+      } catch {
+        postBody = {};
+      }
+    }
+
+    const getParam = (key: string, aliasKey?: string): string => {
+      return (
+        url.searchParams.get(key) ||
+        (aliasKey ? url.searchParams.get(aliasKey) : null) ||
+        (postBody[key] !== undefined ? String(postBody[key]) : '') ||
+        (aliasKey && postBody[aliasKey] !== undefined ? String(postBody[aliasKey]) : '')
+      );
+    };
+
+    // GET / POST /api/qdcb/monthly (Thống kê QĐCB mới trong tháng)
+    if (subPath === '/monthly') {
+      const result = await tthcDataService.getQDCBMonthlyNew();
+      return jsonResponse(result, result.success ? 200 : 500, true);
+    }
+
+    // GET / POST /api/qdcb/detail?id=... hoặc ?so=...
+    if (subPath === '/detail') {
+      const soOrId = getParam('id') || getParam('so', 'so_quyet_dinh') || getParam('so_hoac_id_qdcb');
+      const dinhDang = (getParam('dinh_dang') || 'markdown') as 'markdown' | 'json';
+      if (!soOrId) {
+        return jsonResponse({ error: 'Thiếu tham số id hoặc so_quyet_dinh' }, 400);
+      }
+      const result = await tthcDataService.getQDCBDetail(soOrId, dinhDang);
+      return jsonResponse(result, result.success ? 200 : 404, true);
+    }
+
+    // GET / POST /api/qdcb/search
+    if (subPath === '/search' || subPath === '' || subPath === '/') {
+      const tu_khoa = getParam('q', 'tu_khoa') || undefined;
+      const so_quyet_dinh = getParam('so', 'so_quyet_dinh') || undefined;
+      const co_quan_ban_hanh = getParam('co_quan', 'co_quan_ban_hanh') || undefined;
+      const linh_vuc = getParam('linh_vuc', 'linhvuc') || undefined;
+      const namStr = getParam('nam');
+      const nam = namStr ? parseInt(namStr, 10) : undefined;
+      const thang = getParam('thang') || undefined;
+      const moi_trong_thang = getParam('moi_trong_thang') === 'true';
+      const limit = parseInt(getParam('limit') || '10', 10);
+      const page = parseInt(getParam('page') || '1', 10);
+      const dinh_dang = (getParam('dinh_dang') || 'markdown') as 'markdown' | 'json';
+
+      const result = await tthcDataService.searchQDCB({
+        tu_khoa,
+        so_quyet_dinh,
+        co_quan_ban_hanh,
+        linh_vuc,
+        nam,
+        thang,
+        moi_trong_thang,
+        limit,
+        page,
+        dinh_dang
+      });
+      return jsonResponse(result, 200, true);
+    }
+  }
+
   // Fallback 404 cho các đường dẫn không tồn tại
   return jsonResponse({ error: 'Endpoint not found', path: pathname }, 404);
 };

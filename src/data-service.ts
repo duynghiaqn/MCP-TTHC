@@ -15,7 +15,11 @@ import type {
   HTGQConfig,
   HTGQResult,
   DVCQGLiveFormality,
-  LiveFormalityResult
+  LiveFormalityResult,
+  QDCBItem,
+  QDCBDetail,
+  QDCBSearchParams,
+  QDCBSearchResult
 } from './types.js';
 
 export const PROVINCE_MAP: Record<string, string> = {
@@ -320,6 +324,63 @@ export function getDetailsBaseUrl(): string {
   return getDetailsBaseUrls()[0];
 }
 
+// Cấu hình nguồn dữ liệu Quyết định công bố (QĐCB) từ Crawler-TTHC (branch qdcb)
+if (!process.env.QDCB_INDEX_URL) {
+  process.env.QDCB_INDEX_URL = 'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/parts/part_001.json';
+}
+if (!process.env.QDCB_DETAILS_BASE_URL) {
+  process.env.QDCB_DETAILS_BASE_URL = 'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/details';
+}
+if (!process.env.QDCB_MONTHLY_URL) {
+  process.env.QDCB_MONTHLY_URL = 'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/monthly_new.json';
+}
+
+export const BACKUP_QDCB_INDEX_URLS = [
+  'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/parts/part_001.json',
+  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/parts/part_001.json',
+  'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/snapshot.json',
+  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/qdcb/parts/part_001.json'
+];
+
+export const BACKUP_QDCB_DETAILS_BASE_URLS = [
+  'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/details',
+  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/details',
+  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/qdcb/details'
+];
+
+export const BACKUP_QDCB_MONTHLY_URLS = [
+  'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/monthly_new.json',
+  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@qdcb/monthly_new.json',
+  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/qdcb/monthly_new.json'
+];
+
+export function getQdcbIndexUrls(): string[] {
+  const envUrl = process.env.QDCB_INDEX_URL;
+  const urls: string[] = [
+    ...(envUrl ? [envUrl] : []),
+    ...BACKUP_QDCB_INDEX_URLS
+  ];
+  return Array.from(new Set(urls.filter(Boolean)));
+}
+
+export function getQdcbDetailsBaseUrls(): string[] {
+  const envUrl = process.env.QDCB_DETAILS_BASE_URL;
+  const urls: string[] = [
+    ...(envUrl ? [envUrl] : []),
+    ...BACKUP_QDCB_DETAILS_BASE_URLS
+  ];
+  return Array.from(new Set(urls.filter(Boolean))).map(u => u.replace(/\/+$/, ''));
+}
+
+export function getQdcbMonthlyUrls(): string[] {
+  const envUrl = process.env.QDCB_MONTHLY_URL;
+  const urls: string[] = [
+    ...(envUrl ? [envUrl] : []),
+    ...BACKUP_QDCB_MONTHLY_URLS
+  ];
+  return Array.from(new Set(urls.filter(Boolean)));
+}
+
 // Vietnamese tone removal for intelligent search
 export function removeVietnameseTones(str: string): string {
   if (!str) return '';
@@ -374,6 +435,15 @@ class TTHCDataService {
   private updatePollingTimer: NodeJS.Timeout | null = null;
   private isFetchingIndex = false;
   private fetchIndexPromise: Promise<TTHCIndexItem[]> | null = null;
+
+  // Cache dữ liệu Quyết định công bố (QĐCB)
+  private qdcbIndex: QDCBItem[] | null = null;
+  private qdcbByIdMap = new Map<string, QDCBItem>();
+  private qdcbBySoQdMap = new Map<string, QDCBItem>();
+  private qdcbDetailCache = new Map<string, { data: QDCBDetail; timestamp: number }>();
+  private qdcbMonthlyCache: { data: any; timestamp: number } | null = null;
+  private lastQdcbFetchTime = 0;
+  private fetchQdcbPromise: Promise<QDCBItem[]> | null = null;
 
   // Maximum age for cached index (1 hour)
   private readonly CACHE_TTL_MS = 60 * 60 * 1000;
@@ -1206,10 +1276,13 @@ class TTHCDataService {
       ? `https://dichvucong.gov.vn/thu-tuc-hanh-chinh/${detail.id}`
       : undefined;
 
+    const matchedQdcb = this.findQDCBBySoQuyetDinhSync(decisionNo);
+    const qdcbLinkSuffix = matchedQdcb?.url ? ` — [Xem QĐCB nguồn](${matchedQdcb.url})` : '';
+
     lines.push(`# ${name}`);
     lines.push('');
     lines.push(`- **Mã TTHC**: \`${code}\``);
-    lines.push(`- **Số Quyết định**: ${decisionNo}`);
+    lines.push(`- **Số Quyết định**: ${decisionNo}${qdcbLinkSuffix}`);
     lines.push(`- **Ngày công khai**: ${ngayCongKhai}`);
     lines.push(`- **Ngày cập nhật**: ${ngayCapNhat}`);
     lines.push(`- **Ngày điều chỉnh**: ${ngayDieuChinh}`);
@@ -3165,6 +3238,415 @@ class TTHCDataService {
         error: msg
       };
     }
+  }
+
+  // =========================================================================
+  // QUẢN LÝ & TRA CỨU DỮ LIỆU QUYẾT ĐỊNH CÔNG BỐ (QĐCB)
+  // Nguồn: https://github.com/duynghiaqn/Crawler-TTHC/tree/qdcb
+  // =========================================================================
+
+  private normalizeSoQd(soQd: string): string {
+    return (soQd || '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/\.+/g, '')
+      .trim();
+  }
+
+  async loadQDCBIndex(forceRefresh = false): Promise<QDCBItem[]> {
+    const now = Date.now();
+    if (!forceRefresh && this.qdcbIndex && now - this.lastQdcbFetchTime < this.CACHE_TTL_MS) {
+      return this.qdcbIndex;
+    }
+
+    if (this.fetchQdcbPromise) {
+      return this.fetchQdcbPromise;
+    }
+
+    this.fetchQdcbPromise = (async () => {
+      const urls = getQdcbIndexUrls();
+      let lastError: unknown = null;
+
+      for (const url of urls) {
+        try {
+          console.log(`[QDCB DataService] Đang tải index QĐCB từ: ${url}...`);
+          const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status} từ ${url}`);
+          }
+
+          const rawData = (await res.json()) as QDCBItem[];
+          if (!Array.isArray(rawData)) {
+            throw new Error(`Dữ liệu QĐCB không phải mảng hợp lệ từ ${url}`);
+          }
+
+          this.qdcbIndex = rawData;
+          this.qdcbByIdMap.clear();
+          this.qdcbBySoQdMap.clear();
+
+          for (const item of rawData) {
+            if (item.id) {
+              this.qdcbByIdMap.set(item.id, item);
+            }
+            if (item.so_quyet_dinh) {
+              const norm = this.normalizeSoQd(item.so_quyet_dinh);
+              if (!this.qdcbBySoQdMap.has(norm)) {
+                this.qdcbBySoQdMap.set(norm, item);
+              }
+            }
+          }
+
+          this.lastQdcbFetchTime = Date.now();
+          console.log(`[QDCB DataService] Đã nạp ${rawData.length} Quyết định công bố.`);
+          return rawData;
+        } catch (err) {
+          lastError = err;
+          console.warn(`[QDCB DataService] Lỗi tải từ ${url}:`, err instanceof Error ? err.message : err);
+        }
+      }
+
+      if (this.qdcbIndex) {
+        return this.qdcbIndex;
+      }
+      throw new Error(`Không thể tải dữ liệu QĐCB từ tất cả các nguồn: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+    })().finally(() => {
+      this.fetchQdcbPromise = null;
+    });
+
+    return this.fetchQdcbPromise;
+  }
+
+  findQDCBBySoQuyetDinhSync(decisionNoText?: string): QDCBItem | undefined {
+    if (!decisionNoText || !this.qdcbIndex) return undefined;
+    // Trích phần số quyết định trước dấu ngoặc đơn nếu có, ví dụ "807/QĐ-TTCP (ban hành ngày...)"
+    const cleanPart = decisionNoText.split('(')[0].trim();
+    const norm = this.normalizeSoQd(cleanPart);
+    if (!norm) return undefined;
+    return this.qdcbBySoQdMap.get(norm);
+  }
+
+  async getQDCBMonthlyNew(): Promise<{ success: boolean; data?: any; markdown: string; error?: string }> {
+    const now = Date.now();
+    if (this.qdcbMonthlyCache && now - this.qdcbMonthlyCache.timestamp < 30 * 60 * 1000) {
+      return this.formatQDCBMonthlyResponse(this.qdcbMonthlyCache.data);
+    }
+
+    const urls = getQdcbMonthlyUrls();
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) continue;
+        const json = await res.json();
+        this.qdcbMonthlyCache = { data: json, timestamp: Date.now() };
+        return this.formatQDCBMonthlyResponse(json);
+      } catch {
+        // Thử link tiếp theo
+      }
+    }
+
+    return {
+      success: false,
+      markdown: 'Không thể tải thống kê QĐCB mới trong tháng tại thời điểm này.',
+      error: 'Fetch failed'
+    };
+  }
+
+  private formatQDCBMonthlyResponse(data: any): { success: boolean; data: any; markdown: string } {
+    const lines: string[] = [];
+    const month = data?.month || 'Tháng hiện tại';
+    const items: QDCBItem[] = Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data)
+        ? data
+        : [];
+    const total = data?.total ?? items.length;
+
+    lines.push(`## 📅 Quyết Định Công Bố Mới Trong Tháng (${month})`);
+    lines.push(`> Tổng số QĐCB mới: **${total}** quyết định.`);
+    lines.push('');
+
+    items.slice(0, 20).forEach((item, idx) => {
+      lines.push(`### ${idx + 1}. ${item.so_quyet_dinh || 'N/A'} — ${item.co_quan_ban_hanh || ''}`);
+      lines.push(`- **ID**: \`${item.id}\` | **Ngày QĐ**: ${item.ngay_quyet_dinh || 'N/A'} | **Công bố**: ${item.ngay_cong_bo || 'N/A'}`);
+      if (item.linh_vuc && item.linh_vuc.length > 0) {
+        lines.push(`- **Lĩnh vực**: ${item.linh_vuc.join(', ')}`);
+      }
+      lines.push(`- **Trích yếu**: ${item.trich_yeu || ''}`);
+      if (item.url) lines.push(`- **Link DVCQG**: [Xem chi tiết](${item.url})`);
+      lines.push('');
+    });
+
+    if (items.length > 20) {
+      lines.push(`*Hiển thị 20/${items.length} kết quả mới nhất. Dùng bộ lọc tháng để xem thêm.*`);
+    }
+
+    return {
+      success: true,
+      data,
+      markdown: lines.join('\n')
+    };
+  }
+
+  async searchQDCB(params: QDCBSearchParams): Promise<QDCBSearchResult> {
+    if (params.moi_trong_thang) {
+      const monthly = await this.getQDCBMonthlyNew();
+      if (monthly.success && monthly.data) {
+        const items: QDCBItem[] = Array.isArray(monthly.data?.items)
+          ? monthly.data.items
+          : Array.isArray(monthly.data)
+            ? monthly.data
+            : [];
+        const limit = Math.min(Math.max(params.limit || 10, 1), 50);
+        const page = Math.max(params.page || 1, 1);
+        const start = (page - 1) * limit;
+        const paged = items.slice(start, start + limit);
+        const totalPages = Math.max(Math.ceil(items.length / limit), 1);
+
+        return {
+          total: items.length,
+          page,
+          limit,
+          total_pages: totalPages,
+          data: paged,
+          markdown: monthly.markdown
+        };
+      }
+    }
+
+    const index = await this.loadQDCBIndex();
+    let filtered = index;
+
+    if (params.so_quyet_dinh && params.so_quyet_dinh.trim()) {
+      const qNorm = this.normalizeSoQd(params.so_quyet_dinh);
+      filtered = filtered.filter(item =>
+        this.normalizeSoQd(item.so_quyet_dinh).includes(qNorm)
+      );
+    }
+
+    if (params.co_quan_ban_hanh && params.co_quan_ban_hanh.trim()) {
+      const cqNorm = removeVietnameseTones(params.co_quan_ban_hanh);
+      filtered = filtered.filter(item =>
+        removeVietnameseTones(item.co_quan_ban_hanh || '').includes(cqNorm)
+      );
+    }
+
+    if (params.linh_vuc && params.linh_vuc.trim()) {
+      const lvNorm = removeVietnameseTones(params.linh_vuc);
+      filtered = filtered.filter(item =>
+        (item.linh_vuc || []).some(lv => removeVietnameseTones(lv).includes(lvNorm))
+      );
+    }
+
+    if (params.nam) {
+      const yearStr = String(params.nam);
+      filtered = filtered.filter(
+        item =>
+          (item.ngay_quyet_dinh && item.ngay_quyet_dinh.startsWith(yearStr)) ||
+          (item.ngay_cong_bo && item.ngay_cong_bo.startsWith(yearStr))
+      );
+    }
+
+    if (params.thang && params.thang.trim()) {
+      const monthStr = params.thang.trim();
+      filtered = filtered.filter(
+        item =>
+          (item.ngay_quyet_dinh && item.ngay_quyet_dinh.startsWith(monthStr)) ||
+          (item.ngay_cong_bo && item.ngay_cong_bo.startsWith(monthStr))
+      );
+    }
+
+    if (params.tu_khoa && params.tu_khoa.trim()) {
+      const kwNorm = removeVietnameseTones(params.tu_khoa);
+      const kwWords = kwNorm.split(/\s+/).filter(Boolean);
+      filtered = filtered.filter(item => {
+        const hay = removeVietnameseTones(
+          `${item.so_quyet_dinh || ''} ${item.trich_yeu || ''} ${item.co_quan_ban_hanh || ''} ${(item.linh_vuc || []).join(' ')}`
+        );
+        return kwWords.every(w => hay.includes(w));
+      });
+    }
+
+    // Sắp xếp mặc định theo ngày công bố mới nhất
+    filtered = [...filtered].sort((a, b) => (b.publication_date_ts || 0) - (a.publication_date_ts || 0));
+
+    const limit = Math.min(Math.max(params.limit || 10, 1), 50);
+    const page = Math.max(params.page || 1, 1);
+    const total = filtered.length;
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+    const start = (page - 1) * limit;
+    const data = filtered.slice(start, start + limit);
+
+    const lines: string[] = [];
+    lines.push('## 📜 Kết Quả Tra Cứu Quyết Định Công Bố (QĐCB)');
+    const filterNotes: string[] = [];
+    if (params.tu_khoa) filterNotes.push(`Từ khóa: "${params.tu_khoa}"`);
+    if (params.so_quyet_dinh) filterNotes.push(`Số QĐ: "${params.so_quyet_dinh}"`);
+    if (params.co_quan_ban_hanh) filterNotes.push(`Cơ quan: "${params.co_quan_ban_hanh}"`);
+    if (params.linh_vuc) filterNotes.push(`Lĩnh vực: "${params.linh_vuc}"`);
+    if (params.nam) filterNotes.push(`Năm: ${params.nam}`);
+    if (params.thang) filterNotes.push(`Tháng: ${params.thang}`);
+    if (filterNotes.length > 0) {
+      lines.push(`*Bộ lọc: ${filterNotes.join(' | ')}*`);
+    }
+    lines.push(`> Tìm thấy **${total}** Quyết định công bố (Trang **${page}/${totalPages}**, hiển thị ${data.length} mục)`);
+    lines.push('');
+
+    if (data.length === 0) {
+      lines.push('Không tìm thấy Quyết định công bố nào phù hợp với điều kiện lọc.');
+    } else {
+      data.forEach((item, idx) => {
+        const num = start + idx + 1;
+        lines.push(`### ${num}. Quyết định số \`${item.so_quyet_dinh || 'N/A'}\` — ${item.co_quan_ban_hanh || 'Cơ quan ban hành'}`);
+        lines.push(`- **ID QĐCB**: \`${item.id}\``);
+        lines.push(`- **Ngày ban hành**: ${item.ngay_quyet_dinh || 'N/A'} | **Ngày công bố**: ${item.ngay_cong_bo || 'N/A'}`);
+        if (item.linh_vuc && item.linh_vuc.length > 0) {
+          lines.push(`- **Lĩnh vực**: ${item.linh_vuc.join(', ')}`);
+        }
+        lines.push(`- **Trích yếu**: ${item.trich_yeu || 'Không có trích yếu'}`);
+        if (item.url) {
+          lines.push(`- **Link gốc DVCQG**: [Xem văn bản trên Cổng DVCQG](${item.url})`);
+        }
+        lines.push('');
+      });
+    }
+
+    return {
+      total,
+      page,
+      limit,
+      total_pages: totalPages,
+      data,
+      markdown: lines.join('\n')
+    };
+  }
+
+  async getQDCBDetail(
+    idOrSoQd: string,
+    dinhDang: 'markdown' | 'json' = 'markdown'
+  ): Promise<{ success: boolean; data?: QDCBDetail; markdown: string; error?: string }> {
+    const query = (idOrSoQd || '').trim();
+    if (!query) {
+      return {
+        success: false,
+        markdown: 'Vui lòng cung cấp Số Quyết định hoặc UUID của QĐCB.',
+        error: 'Missing idOrSoQd'
+      };
+    }
+
+    const index = await this.loadQDCBIndex();
+    let targetItem = this.qdcbByIdMap.get(query);
+
+    if (!targetItem) {
+      const norm = this.normalizeSoQd(query);
+      targetItem = this.qdcbBySoQdMap.get(norm);
+    }
+
+    if (!targetItem) {
+      // Tìm gần đúng theo số quyết định
+      const norm = this.normalizeSoQd(query);
+      targetItem = index.find(item => this.normalizeSoQd(item.so_quyet_dinh).includes(norm));
+    }
+
+    if (!targetItem) {
+      return {
+        success: false,
+        markdown: `Không tìm thấy Quyết định công bố nào có mã hoặc số hiệu **"${query}"** trong kho dữ liệu QĐCB.`,
+        error: 'Not found'
+      };
+    }
+
+    const targetId = targetItem.id;
+    const now = Date.now();
+    const cached = this.qdcbDetailCache.get(targetId);
+    let detail: QDCBDetail | null = null;
+
+    if (cached && now - cached.timestamp < this.CACHE_TTL_MS) {
+      detail = cached.data;
+    } else {
+      const baseUrls = getQdcbDetailsBaseUrls();
+      for (const base of baseUrls) {
+        try {
+          const res = await fetch(`${base}/${targetId}.json`, { signal: AbortSignal.timeout(15000) });
+          if (res.ok) {
+            detail = (await res.json()) as QDCBDetail;
+            this.qdcbDetailCache.set(targetId, { data: detail, timestamp: now });
+            break;
+          }
+        } catch {
+          // Thử nguồn backup tiếp theo
+        }
+      }
+    }
+
+    if (!detail) {
+      // Fallback sang dữ liệu tóm tắt từ index nếu chưa fetch được file chi tiết
+      detail = { ...targetItem };
+    }
+
+    if (dinhDang === 'json') {
+      return {
+        success: true,
+        data: detail,
+        markdown: JSON.stringify(detail, null, 2)
+      };
+    }
+
+    const lines: string[] = [];
+    lines.push(`# Quyết định công bố: ${detail.so_quyet_dinh || 'N/A'}`);
+    lines.push('');
+    lines.push(`- **Số Quyết định**: \`${detail.so_quyet_dinh || 'N/A'}\``);
+    lines.push(`- **ID QĐCB**: \`${detail.id}\``);
+    lines.push(`- **Cơ quan ban hành**: ${detail.co_quan_ban_hanh || 'N/A'}`);
+    lines.push(`- **Ngày quyết định**: ${detail.ngay_quyet_dinh || 'N/A'}`);
+    lines.push(`- **Ngày công bố**: ${detail.ngay_cong_bo || 'N/A'}`);
+    if (detail.linh_vuc && detail.linh_vuc.length > 0) {
+      lines.push(`- **Lĩnh vực**: ${detail.linh_vuc.join(', ')}`);
+    }
+    lines.push(`- **Loại quyết định**: ${detail.loai_quyet_dinh || 'STANDARD'} | **Trạng thái**: ${detail.trang_thai || 'PUBLICATION'}`);
+    if (detail.url) {
+      lines.push(`- **Link gốc DVCQG**: [Xem văn bản trên Cổng DVCQG](${detail.url})`);
+    }
+    lines.push('');
+
+    lines.push('### Trích yếu nội dung');
+    lines.push(detail.trich_yeu || 'Không có trích yếu.');
+    lines.push('');
+
+    if (detail.tep_dinh_kem && detail.tep_dinh_kem.length > 0) {
+      lines.push('### Tệp đính kèm');
+      detail.tep_dinh_kem.forEach((f, idx) => {
+        lines.push(`${idx + 1}. [${f.name || 'Tài liệu đính kèm'}](${f.url || '#'})`);
+      });
+      lines.push('');
+    }
+
+    const tthcKemTheo = detail.tthc_kem_theo;
+    if (tthcKemTheo) {
+      const renderGroup = (title: string, group?: { count: number; items: any[] }) => {
+        if (!group || !group.items || group.items.length === 0) return;
+        lines.push(`### ${title} (${group.count || group.items.length} thủ tục)`);
+        group.items.forEach((tthc, idx) => {
+          lines.push(`${idx + 1}. **${tthc.ten_tthc || 'N/A'}**`);
+          lines.push(`   - **Mã TTHC**: \`${tthc.ma_tthc || 'N/A'}\` | **Hiệu lực**: ${tthc.ngay_hieu_luc || 'N/A'}`);
+          if (tthc.url) {
+            lines.push(`   - **Link TTHC**: [Chi tiết trên DVCQG](${tthc.url})`);
+          }
+        });
+        lines.push('');
+      };
+
+      renderGroup('🆕 Thủ tục Công bố mới', tthcKemTheo.cong_khai_moi);
+      renderGroup('✏️ Thủ tục Sửa đổi, bổ sung', tthcKemTheo.sua_doi_bo_sung);
+      renderGroup('🔄 Thủ tục Thay thế', tthcKemTheo.thay_the);
+      renderGroup('🔧 Thủ tục Điều chỉnh', tthcKemTheo.dieu_chinh);
+      renderGroup('🚫 Thủ tục Bãi bỏ / Hủy bỏ', tthcKemTheo.bai_bo);
+    }
+
+    return {
+      success: true,
+      data: detail,
+      markdown: lines.join('\n')
+    };
   }
 }
 

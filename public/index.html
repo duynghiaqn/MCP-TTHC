@@ -161,6 +161,8 @@
           <div class="tool-selector-group">
             <label class="input-label" for="select-mcp-tool">Công cụ MCP:</label>
             <select id="select-mcp-tool" class="form-select">
+              <option value="tra_cuu_quyet_dinh_cong_bo" style="font-weight: 600; color: #f59e0b;">tra_cuu_quyet_dinh_cong_bo (Tra cứu Quyết định công bố - QĐCB)</option>
+              <option value="chi_tiet_quyet_dinh_cong_bo" style="font-weight: 600; color: #10b981;">chi_tiet_quyet_dinh_cong_bo (Chi tiết QĐCB & TTHC kèm theo)</option>
               <option value="tra_cuu_tthc_gia_lai" style="font-weight: 600; color: #38bdf8;">tra_cuu_tthc_gia_lai (TTHC Tỉnh Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo_gia_lai" style="font-weight: 600; color: #e879f9;">tra_cuu_tthc_noi_bo_gia_lai (TTHC Nội Bộ Gia Lai)</option>
               <option value="tra_cuu_tthc_noi_bo" style="font-weight: 600; color: #c084fc;">tra_cuu_tthc_noi_bo (TTHC Nội Bộ)</option>
@@ -512,6 +514,67 @@
               </div>
             </div>
 
+            <!-- Tool: tra_cuu_quyet_dinh_cong_bo -->
+            <div class="param-group" id="params-tra_cuu_quyet_dinh_cong_bo" style="display: none;">
+              <label class="input-label" for="input-qdcb-keyword">Từ khóa trích yếu hoặc nội dung QĐCB:</label>
+              <input type="text" id="input-qdcb-keyword" class="form-input" placeholder="Ví dụ: hộ tịch, đất đai, thanh tra, Gia Lai...">
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-qdcb-so">Số Quyết định:</label>
+                  <input type="text" id="input-qdcb-so" class="form-input" placeholder="Ví dụ: 807/QĐ-TTCP, 4045/QĐ-UBND...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="input-qdcb-coquan">Cơ quan ban hành:</label>
+                  <input type="text" id="input-qdcb-coquan" class="form-input" placeholder="Ví dụ: Bộ Tư pháp, UBND tỉnh Gia Lai...">
+                </div>
+              </div>
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="input-qdcb-linhvuc">Lĩnh vực:</label>
+                  <input type="text" id="input-qdcb-linhvuc" class="form-input" placeholder="Ví dụ: Hộ tịch, Đất đai...">
+                </div>
+                <div class="form-col">
+                  <label class="input-label" for="select-qdcb-monthly">Mới trong tháng:</label>
+                  <select id="select-qdcb-monthly" class="form-select">
+                    <option value="false" selected>Tìm toàn bộ (~2,000 QĐCB)</option>
+                    <option value="true">Chỉ xem QĐCB mới ban hành trong tháng</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Mẫu tra cứu QĐCB:</span>
+                <button type="button" class="btn-chip" data-fill-qdcb-so="807/QĐ-TTCP">807/QĐ-TTCP</button>
+                <button type="button" class="btn-chip" data-fill-qdcb-coquan="UBND tỉnh Gia Lai">UBND tỉnh Gia Lai</button>
+                <button type="button" class="btn-chip" data-fill-qdcb-coquan="Bộ Tư pháp">Bộ Tư pháp</button>
+                <button type="button" class="btn-chip" data-fill-qdcb-monthly="true">Mới trong tháng</button>
+              </div>
+            </div>
+
+            <!-- Tool: chi_tiet_quyet_dinh_cong_bo -->
+            <div class="param-group" id="params-chi_tiet_quyet_dinh_cong_bo" style="display: none;">
+              <label class="input-label" for="input-qdcb-detail-id">Số Quyết định hoặc UUID QĐCB (*):</label>
+              <input type="text" id="input-qdcb-detail-id" class="form-input" placeholder="Ví dụ: 807/QĐ-TTCP hoặc 01a1e76f-334d-706e-aead-de3d410f50a1" value="807/QĐ-TTCP">
+
+              <div class="form-row mt-2">
+                <div class="form-col">
+                  <label class="input-label" for="select-qdcb-detail-format">Định dạng kết quả:</label>
+                  <select id="select-qdcb-detail-format" class="form-select">
+                    <option value="markdown" selected>Markdown (Trực quan kèm danh sách TTHC)</option>
+                    <option value="json">JSON (Dữ liệu thô chi tiết)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quick-chips">
+                <span class="chip-label">Mẫu chi tiết QĐCB:</span>
+                <button type="button" class="btn-chip" data-fill-qdcb-detail="807/QĐ-TTCP">807/QĐ-TTCP (Thanh tra CP)</button>
+                <button type="button" class="btn-chip" data-fill-qdcb-detail="4045/QĐ-UBND">4045/QĐ-UBND (Khánh Hòa)</button>
+              </div>
+            </div>
+
             <!-- Pagination options -->
             <div class="pagination-row" id="common-pagination-controls">
               <div class="pagination-field">
@@ -654,6 +717,89 @@
         </div>
 
         <div class="tools-grid" id="tools-doc-grid">
+
+          <!-- TOOL QĐCB 1: tra_cuu_quyet_dinh_cong_bo -->
+          <div class="tool-doc-card" data-tool="tra_cuu_quyet_dinh_cong_bo" data-category="tra_cuu chuyen_sau" style="--card-glow: rgba(245, 158, 11, 0.25); --accent-line: #f59e0b;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.28);">
+                  <i class="bi bi-file-earmark-check-fill"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">tra_cuu_quyet_dinh_cong_bo</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="tra_cuu_quyet_dinh_cong_bo" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">tra_cuu_qdcb</span>
+                    <span class="alias-code">tim_kiem_qdcb</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);"><i class="bi bi-dot"></i> QĐCB DVCQG</span>
+            </div>
+            <div class="tool-doc-body">
+              <p class="tool-description">
+                Tra cứu danh mục Quyết định công bố (QĐCB) TTHC trên toàn quốc từ nguồn <code>Crawler-TTHC/qdcb</code>. Hỗ trợ lọc theo từ khóa trích yếu, số quyết định, cơ quan ban hành, lĩnh vực, năm/tháng hoặc lấy nhanh QĐCB mới ban hành trong tháng.
+              </p>
+              <div class="tool-schema-meta">
+                <span class="schema-badge opt"><i class="bi bi-search"></i> tu_khoa, so_quyet_dinh</span>
+                <span class="schema-badge opt"><i class="bi bi-building"></i> co_quan_ban_hanh, linh_vuc</span>
+                <span class="schema-badge opt"><i class="bi bi-calendar-event"></i> nam, thang, moi_trong_thang</span>
+              </div>
+            </div>
+            <div class="tool-card-footer">
+              <span class="endpoint-hint"><i class="bi bi-hdd-network"></i> GET /api/qdcb/search</span>
+              <button type="button" class="btn-try-tool" data-goto-tool="tra_cuu_quyet_dinh_cong_bo" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35);">
+                <i class="bi bi-play-circle-fill"></i> Thử ngay
+              </button>
+            </div>
+          </div>
+
+          <!-- TOOL QĐCB 2: chi_tiet_quyet_dinh_cong_bo -->
+          <div class="tool-doc-card" data-tool="chi_tiet_quyet_dinh_cong_bo" data-category="tra_cuu chuyen_sau" style="--card-glow: rgba(16, 185, 129, 0.25); --accent-line: #10b981;">
+            <div class="tool-card-accent"></div>
+            <div class="tool-doc-header">
+              <div class="tool-header-left">
+                <div class="tool-icon-box" style="color: #10b981; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.28);">
+                  <i class="bi bi-journal-text"></i>
+                </div>
+                <div class="tool-title-col">
+                  <div class="tool-name-row">
+                    <span class="tool-name">chi_tiet_quyet_dinh_cong_bo</span>
+                    <button type="button" class="btn-copy-tool-name" data-copy="chi_tiet_quyet_dinh_cong_bo" title="Sao chép tên công cụ">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <div class="tool-alias-wrap">
+                    <span><i class="bi bi-arrow-return-right"></i> Alias:</span>
+                    <span class="alias-code">chi_tiet_qdcb</span>
+                    <span class="alias-code">lay_qdcb_theo_so</span>
+                  </div>
+                </div>
+              </div>
+              <span class="tool-header-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);"><i class="bi bi-dot"></i> Chi tiết QĐCB</span>
+            </div>
+            <div class="tool-doc-body">
+              <p class="tool-description">
+                Lấy thông tin chi tiết toàn văn một Quyết định công bố theo Số QĐ hoặc UUID, bao gồm toàn bộ danh sách TTHC kèm theo (Công bố mới, Sửa đổi bổ sung, Bãi bỏ, Thay thế).
+              </p>
+              <div class="tool-schema-meta">
+                <span class="schema-badge req"><i class="bi bi-asterisk"></i> so_hoac_id_qdcb: string</span>
+                <span class="schema-badge opt"><i class="bi bi-filetype-raw"></i> dinh_dang: markdown | json</span>
+              </div>
+            </div>
+            <div class="tool-card-footer">
+              <span class="endpoint-hint"><i class="bi bi-hdd-network"></i> GET /api/qdcb/detail</span>
+              <button type="button" class="btn-try-tool" data-goto-tool="chi_tiet_quyet_dinh_cong_bo" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35);">
+                <i class="bi bi-play-circle-fill"></i> Thử ngay
+              </button>
+            </div>
+          </div>
           
           <!-- TOOL 1: tra_cuu_tthc_gia_lai -->
           <div class="tool-doc-card" data-tool="tra_cuu_tthc_gia_lai" data-category="chuyen_sau" style="--card-glow: rgba(56, 189, 248, 0.25); --accent-line: #38bdf8;">
