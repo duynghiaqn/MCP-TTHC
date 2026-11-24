@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "MCP Server Tra Cứu TTHC DVCQG",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "API & MCP Server tra cứu Thủ tục Hành chính Quốc gia Việt Nam. Hỗ trợ tra cứu theo mã TTHC, tìm kiếm theo tên, phân cấp thực hiện, phân lĩnh vực và thống kê tổng hợp.",
     "contact": {
       "name": "KynChou"

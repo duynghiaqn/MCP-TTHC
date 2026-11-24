@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "mcp-tthc-dvcqg",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Tra cứu cơ sở dữ liệu quốc gia về Thủ tục Hành chính (TTHC) Việt Nam qua MCP Protocol.",
   "author": {
     "name": "KynChou",
