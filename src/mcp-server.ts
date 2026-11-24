@@ -812,6 +812,13 @@ export function createTTHCMcpServer(): McpServer {
       lines.push(`- **Thời gian cập nhật dữ liệu TTHC**: ${formatIsoVi(stats.lastUpdated)}`);
       lines.push(`- **Số lượng Quyết định công bố (QĐCB)**: **${qdcbStats.total_records.toLocaleString('vi-VN')}** quyết định${qdcbStats.monthly_new !== undefined ? ` *(+${qdcbStats.monthly_new} mới trong tháng)*` : ''}`);
       lines.push(`- **Thời gian cập nhật dữ liệu QĐCB**: ${formatIsoVi(qdcbStats.last_updated)}`);
+      if (stats.online_service_stats?.summary) {
+        const os = stats.online_service_stats.summary;
+        lines.push(
+          `- **Thống kê cung cấp DVCTT (\`online_service.json\`)**: **${os.provided_count.toLocaleString('vi-VN')}/${os.total_records.toLocaleString('vi-VN')}** đã cung cấp *(Toàn trình: **${os.full_count.toLocaleString('vi-VN')}**, Một phần: **${os.partial_count.toLocaleString('vi-VN')}**, Chưa cung cấp: **${os.not_provided_count.toLocaleString('vi-VN')}**)*`
+        );
+        lines.push(`- **Thời gian cập nhật DVCTT**: ${formatIsoVi(stats.online_service_stats.updated_at)}`);
+      }
       lines.push('');
       lines.push('### 🌐 Nền tảng & Giao thức hỗ trợ');
       lines.push(`- **Nền tảng kết nối**: SSE (Cursor AI, Claude Desktop, Windsurf), Streamable HTTP, Direct HTTP JSON-RPC & OpenAI Agent Plugins`);

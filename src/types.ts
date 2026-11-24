@@ -113,11 +113,49 @@ export interface SearchResult<T> {
   totalPages: number;
 }
 
+export interface OnlineServiceItem {
+  dvctt_code: 'FULL' | 'PARTIAL' | 'CHUA_CUNG_CAP' | string;
+  muc_do_dvctt: string;
+  is_provided: boolean;
+  is_mixed: boolean;
+  total_departments: number;
+  full_departments: number;
+  partial_departments: number;
+  citizen_url: string;
+  checked_at?: string;
+}
+
+export interface OnlineServiceSummary {
+  total_records: number;
+  checked_total: number;
+  failed_count?: number;
+  full_count: number;
+  partial_count: number;
+  not_provided_count: number;
+  provided_count: number;
+  mixed_count?: number;
+  admin_full_count?: number;
+  admin_partial_count?: number;
+  admin_not_provided_count?: number;
+}
+
+export interface OnlineServiceDataset {
+  updated_at: string;
+  scope?: string;
+  status?: string;
+  summary: OnlineServiceSummary;
+  items: Record<string, OnlineServiceItem>;
+}
+
 export interface SystemStats {
   totalRecords: number;
   lastUpdated: string;
   capThucHienCounts: Record<string, number>;
   linhVucCounts: Record<string, number>;
+  online_service_stats?: {
+    updated_at: string;
+    summary: OnlineServiceSummary;
+  };
 }
 
 export type DetailSection =

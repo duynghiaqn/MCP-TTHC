@@ -23,7 +23,9 @@ import type {
   GiaLaiChangeItem,
   GiaLaiCompareReport,
   GiaLaiChangeAnalysisParams,
-  GiaLaiChangeAnalysisResult
+  GiaLaiChangeAnalysisResult,
+  OnlineServiceItem,
+  OnlineServiceDataset
 } from './types.js';
 
 export const PROVINCE_MAP: Record<string, string> = {
@@ -379,6 +381,21 @@ export function getGiaLaiCompareReportUrls(): string[] {
   return Array.from(new Set(urls.filter(Boolean)));
 }
 
+export const BACKUP_ONLINE_SERVICE_URLS = [
+  'https://raw.githubusercontent.com/duynghiaqn/Crawler-TTHC/data/online_service.json',
+  'https://cdn.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@data/online_service.json',
+  'https://fastly.jsdelivr.net/gh/duynghiaqn/Crawler-TTHC@data/online_service.json'
+];
+
+export function getOnlineServiceUrls(): string[] {
+  const envUrl = process.env.ONLINE_SERVICE_URL;
+  const urls: string[] = [
+    ...(envUrl ? [envUrl] : []),
+    ...BACKUP_ONLINE_SERVICE_URLS
+  ];
+  return Array.from(new Set(urls.filter(Boolean)));
+}
+
 export function getQdcbIndexUrls(): string[] {
   const envUrl = process.env.QDCB_INDEX_URL;
   const urls: string[] = [
@@ -478,6 +495,8 @@ class TTHCDataService {
   private qdcbMonthlyCache: { data: any; timestamp: number } | null = null;
   private lastQdcbFetchTime = 0;
   private fetchQdcbPromise: Promise<QDCBItem[]> | null = null;
+  private onlineServiceCache: { data: OnlineServiceDataset; timestamp: number; etag?: string } | null = null;
+  private onlineServiceInflight: Promise<OnlineServiceDataset | null> | null = null;
 
   // Maximum age for cached index (1 hour)
   private readonly CACHE_TTL_MS = 60 * 60 * 1000;
@@ -561,6 +580,7 @@ class TTHCDataService {
       const newIndex = await this.loadIndex(true);
       this.detailCache.clear();
       this.giaLaiCompareCache = null;
+      this.onlineServiceCache = null;
       this.versionInfo = {
         last_updated: remoteVersionStr,
         total_records: newIndex.length
@@ -884,19 +904,33 @@ class TTHCDataService {
       yeu_cau_dieu_kien: detailData.requirementsAndConditions || []
     };
 
-    let htgqData: HTGQResult | null = null;
-    try {
-      htgqData = await this.checkHTGQ(identifier, { provinceCode: options?.province_code || '52' });
-    } catch (e) {
-      console.warn('[TTHC DataService] Không thể kiểm tra HTGQ cho thủ tục:', e);
+    const [htgqData, onlineServiceMap] = await Promise.all([
+      this.checkHTGQ(identifier, { provinceCode: options?.province_code || '52' }).catch(e => {
+        console.warn('[TTHC DataService] Không thể kiểm tra HTGQ cho thủ tục:', e);
+        return null;
+      }),
+      this.loadOnlineServiceData().catch(() => null)
+    ]);
+
+    const detailId = String(detailData.id || indexItem?.id || '').trim();
+    const onlineServiceItem = detailId && onlineServiceMap?.items ? onlineServiceMap.items[detailId] || null : null;
+
+    if (indexItem && onlineServiceItem?.muc_do_dvctt) {
+      indexItem.muc_do = onlineServiceItem.muc_do_dvctt;
     }
 
-    const md = this.formatDetailMarkdown(detailData, indexItem || undefined, phanMuc, htgqData);
+    const md = this.formatDetailMarkdown(detailData, indexItem || undefined, phanMuc, htgqData, onlineServiceItem);
     let finalMd = md;
     let finalJson: any = structuredJson;
 
-    if (htgqData && typeof finalJson === 'object' && finalJson !== null) {
-      finalJson.htgq = htgqData;
+    if (typeof finalJson === 'object' && finalJson !== null) {
+      finalJson.isFullProcess = Boolean((detailData as any).isFullProcess);
+      if (onlineServiceItem) {
+        finalJson.online_service = onlineServiceItem;
+      }
+      if (htgqData) {
+        finalJson.htgq = htgqData;
+      }
     }
 
     if (options?.tra_cuu_dvctt || options?.province_code) {
@@ -1154,13 +1188,19 @@ class TTHCDataService {
   }
 
   async getStats(): Promise<SystemStats> {
-    const data = await this.loadIndex();
-    const version = await this.getVersion();
+    const [data, version, onlineService] = await Promise.all([
+      this.loadIndex(),
+      this.getVersion(),
+      this.loadOnlineServiceData().catch(() => null)
+    ]);
 
     const capCounts: Record<string, number> = {};
     const linhVucCounts: Record<string, number> = {};
 
     for (const item of data) {
+      if (item.id && onlineService?.items?.[item.id]?.muc_do_dvctt) {
+        item.muc_do = onlineService.items[item.id].muc_do_dvctt;
+      }
       if (item.cap_thuc_hien) {
         const caps = item.cap_thuc_hien.split(',').map(c => c.trim());
         for (const cap of caps) {
@@ -1177,7 +1217,15 @@ class TTHCDataService {
       totalRecords: data.length,
       lastUpdated: version.last_updated,
       capThucHienCounts: capCounts,
-      linhVucCounts: linhVucCounts
+      linhVucCounts: linhVucCounts,
+      ...(onlineService?.summary
+        ? {
+            online_service_stats: {
+              updated_at: onlineService.updated_at,
+              summary: onlineService.summary
+            }
+          }
+        : {})
     };
   }
 
@@ -1185,7 +1233,8 @@ class TTHCDataService {
     detail: TTHCDetail,
     indexItem?: TTHCIndexItem,
     phanMuc: DetailSection = 'tat_ca',
-    htgq?: HTGQResult | null
+    htgq?: HTGQResult | null,
+    onlineService?: OnlineServiceItem | null
   ): string {
     const lines: string[] = [];
 
@@ -1329,25 +1378,55 @@ class TTHCDataService {
     lines.push(`- **Lĩnh vực**: ${linhVuc}`);
     lines.push(`- **Mức phí**: ${coThuPhi}${indexItem?.chi_tiet_phi ? ` (${indexItem.chi_tiet_phi})` : ''}`);
 
-    // Mức độ dịch vụ công trực tuyến (DVCTT)
+    // Mức độ dịch vụ công trực tuyến (DVCTT): kết hợp Live HTGQ + online_service.json + trường isFullProcess tại chi tiết TTHC
+    const hasIsFullProcessFlag = typeof (detail as any).isFullProcess === 'boolean';
+    const isFullProcessVal = Boolean((detail as any).isFullProcess);
     let mucDoText = 'Chưa xác định';
+
     if (htgq?.implement_level && htgq.implement_level !== 'Chưa cung cấp') {
       mucDoText = htgq.implement_level === 'Toàn trình'
         ? 'Dịch vụ công trực tuyến Toàn trình (Cung cấp 100% online)'
         : `Dịch vụ công trực tuyến Một phần (${htgq.implement_level})`;
+    } else if (onlineService) {
+      const deptSuffix =
+        onlineService.total_departments > 0
+          ? ` — ${onlineService.full_departments} toàn trình / ${onlineService.partial_departments} một phần (trên ${onlineService.total_departments} cơ quan${onlineService.is_mixed ? ', hỗn hợp' : ''})`
+          : '';
+      if (onlineService.dvctt_code === 'FULL' || onlineService.muc_do_dvctt === 'Toàn trình') {
+        mucDoText = `Dịch vụ công trực tuyến Toàn trình${deptSuffix}`;
+      } else if (onlineService.dvctt_code === 'PARTIAL' || onlineService.muc_do_dvctt === 'Một phần') {
+        const noteFull = isFullProcessVal ? ' *(isFullProcess: true trên hồ sơ chuẩn)*' : '';
+        mucDoText = `Dịch vụ công trực tuyến Một phần${deptSuffix}${noteFull}`;
+      } else {
+        mucDoText = isFullProcessVal
+          ? 'Chưa cung cấp trên cổng tiếp nhận (hồ sơ chuẩn isFullProcess: Toàn trình)'
+          : 'Chưa cung cấp dịch vụ công trực tuyến (Nộp trực tiếp tại Bộ phận Một cửa / Bưu chính công ích)';
+      }
     } else if (htgq?.status === 'Chưa cung cấp') {
-      mucDoText = 'Chưa cung cấp dịch vụ công trực tuyến (Nộp trực tiếp tại Bộ phận Một cửa / Bưu chính công ích)';
-    } else if ((detail as any).isFullProcess) {
-      mucDoText = 'Dịch vụ công trực tuyến Toàn trình';
-    } else if (indexItem?.muc_do && indexItem.muc_do !== 'Chưa cập nhật') {
-      mucDoText = indexItem.muc_do;
+      mucDoText = isFullProcessVal
+        ? 'Chưa cung cấp trên cổng tiếp nhận (hồ sơ chuẩn isFullProcess: Toàn trình)'
+        : 'Chưa cung cấp dịch vụ công trực tuyến (Nộp trực tiếp tại Bộ phận Một cửa / Bưu chính công ích)';
+    } else if (hasIsFullProcessFlag) {
+      if (isFullProcessVal) {
+        mucDoText = 'Dịch vụ công trực tuyến Toàn trình (isFullProcess: true)';
+      } else if (indexItem?.muc_do && indexItem.muc_do !== 'Chưa cập nhật') {
+        mucDoText = `${indexItem.muc_do} (isFullProcess: false)`;
+      } else {
+        mucDoText = 'Chưa toàn trình / Một phần hoặc Nộp trực tiếp (isFullProcess: false)';
+      }
     } else if (indexItem?.muc_do) {
       mucDoText = indexItem.muc_do;
     }
 
     lines.push(`- **Mức độ DVCTT**: ${mucDoText}`);
-    if (htgq?.target_dvc_url) {
-      lines.push(`- **Cổng tiếp nhận hồ sơ**: [👉 Nộp hồ sơ trực tuyến (${htgq.loaiHTGQ || 'DVC'})](${htgq.target_dvc_url})`);
+    const rawOnlineUrl = htgq?.target_dvc_url || onlineService?.citizen_url || '';
+    const normalizedOnlineUrl = rawOnlineUrl
+      ? /^https?:\/\//i.test(rawOnlineUrl.trim())
+        ? rawOnlineUrl.trim()
+        : `https://${rawOnlineUrl.trim()}`
+      : '';
+    if (normalizedOnlineUrl) {
+      lines.push(`- **Cổng tiếp nhận hồ sơ**: [👉 Nộp hồ sơ trực tuyến (${htgq?.loaiHTGQ || 'DVC'})](${normalizedOnlineUrl})`);
     }
 
     lines.push(`- **Kết quả thực hiện**: ${ketQuaTomTat}`);
@@ -4124,6 +4203,65 @@ class TTHCDataService {
       items: pagedItems,
       markdown: lines.join('\n')
     };
+  }
+
+  /**
+   * Nạp dữ liệu trạng thái cung cấp Dịch vụ công trực tuyến toàn quốc
+   * Nguồn: https://github.com/duynghiaqn/Crawler-TTHC/blob/data/online_service.json
+   */
+  async loadOnlineServiceData(forceRefresh = false): Promise<OnlineServiceDataset | null> {
+    const now = Date.now();
+    if (!forceRefresh && this.onlineServiceCache && now - this.onlineServiceCache.timestamp < 15 * 60 * 1000) {
+      return this.onlineServiceCache.data;
+    }
+
+    if (this.onlineServiceInflight) {
+      return this.onlineServiceInflight;
+    }
+
+    this.onlineServiceInflight = (async () => {
+      const urls = getOnlineServiceUrls();
+      for (const url of urls) {
+        try {
+          const headers: Record<string, string> = {};
+          if (!forceRefresh && this.onlineServiceCache?.etag && url.includes('raw.githubusercontent.com')) {
+            headers['If-None-Match'] = this.onlineServiceCache.etag;
+          }
+
+          const res = await fetch(url, {
+            headers,
+            cache: 'no-store',
+            signal: AbortSignal.timeout(12000)
+          });
+
+          if (res.status === 304 && this.onlineServiceCache) {
+            this.onlineServiceCache.timestamp = Date.now();
+            return this.onlineServiceCache.data;
+          }
+
+          if (!res.ok) continue;
+          const json = (await res.json()) as OnlineServiceDataset;
+          if (!json || !json.items) continue;
+
+          const newEtag = res.headers.get('etag') || undefined;
+          this.onlineServiceCache = {
+            data: json,
+            timestamp: Date.now(),
+            etag: newEtag
+          };
+          return json;
+        } catch {
+          // Thử fallback tiếp theo
+        }
+      }
+      return this.onlineServiceCache?.data || null;
+    })();
+
+    try {
+      return await this.onlineServiceInflight;
+    } finally {
+      this.onlineServiceInflight = null;
+    }
   }
 }
 

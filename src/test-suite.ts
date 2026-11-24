@@ -985,7 +985,32 @@ async function runTests() {
   console.assert(bdglApiRes.status === 200, 'GET /api/tthc/bien-dong-gia-lai phải trả về 200');
   console.log('[PASS] Tool phan_tich_bien_dong_gia_lai & REST API /api/tthc/bien-dong-gia-lai hoạt động chính xác!\n');
 
-  console.log('[SUCCESS] TẤT CẢ 36 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
+  // TEST 37: Kiểm tra tích hợp online_service.json & trường isFullProcess tại chi tiết TTHC
+  console.log('--- TEST 37: Kiểm tra tích hợp online_service.json & isFullProcess ---');
+  const osData = await tthcDataService.loadOnlineServiceData();
+  console.assert(Boolean(osData && osData.summary && osData.summary.total_records > 0), 'Phải nạp được dữ liệu online_service.json hợp lệ');
+  const detailWithOs = await tthcDataService.getDetail('6.006781');
+  console.assert(typeof (detailWithOs.jsonData as any)?.isFullProcess === 'boolean', 'Chi tiết TTHC phải có trường isFullProcess boolean');
+  console.assert(detailWithOs.markdown.includes('**Mức độ DVCTT**:'), 'Markdown chi tiết phải hiển thị Mức độ DVCTT');
+  const infoRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 371,
+        method: 'tools/call',
+        params: { name: 'thong_tin_mcp_server', arguments: {} }
+      })
+    }),
+    {} as any
+  );
+  console.assert(infoRes.status === 200, 'thong_tin_mcp_server phải trả về 200');
+  const infoText = ((await infoRes.json()) as any).result?.content?.[0]?.text || '';
+  console.assert(infoText.includes('online_service.json'), 'thong_tin_mcp_server phải hiển thị thống kê DVCTT từ online_service.json');
+  console.log('[PASS] Tích hợp online_service.json & isFullProcess hoạt động chính xác!\n');
+
+  console.log('[SUCCESS] TẤT CẢ 37 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
 }
 
 runTests().catch(err => {
