@@ -91,9 +91,56 @@ document.addEventListener('DOMContentLoaded', () => {
     return apiKeyInput.value.trim();
   }
 
+  const tabBtnDocs = document.getElementById('tab-btn-docs');
+  const panelDocs = document.getElementById('panel-docs');
+  let keyVerifyTimer = null;
+
+  function setDocsTabVisible(visible) {
+    if (tabBtnDocs) {
+      tabBtnDocs.style.display = visible ? '' : 'none';
+    }
+    if (!visible && panelDocs && panelDocs.classList.contains('active')) {
+      tabButtons.forEach(b => b.classList.remove('active'));
+      tabPanels.forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-btn-playground')?.classList.add('active');
+      document.getElementById('panel-playground')?.classList.add('active');
+    }
+  }
+
+  async function updateDocsTabVisibility() {
+    const key = getActiveApiKey();
+    if (!key) {
+      setDocsTabVisible(false);
+      return;
+    }
+
+    if (!serverAuthRequired) {
+      setDocsTabVisible(true);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${currentOrigin}/api/tthc/stats?api-key=${encodeURIComponent(key)}`);
+      setDocsTabVisible(res.ok);
+    } catch {
+      setDocsTabVisible(false);
+    }
+  }
+
+  // Ẩn ngay tab Danh Sách Tools & Schemas nếu chưa có API Key
+  setDocsTabVisible(false);
+
   // Cập nhật cấu hình ngay khi người dùng gõ phím
   apiKeyInput.addEventListener('input', () => {
     updateClientConfigs();
+    if (!getActiveApiKey()) {
+      setDocsTabVisible(false);
+      return;
+    }
+    clearTimeout(keyVerifyTimer);
+    keyVerifyTimer = setTimeout(() => {
+      updateDocsTabVisibility();
+    }, 350);
   });
 
   // Toggle API key visibility
@@ -118,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Đã xóa khóa API đã lưu.');
     }
     updateClientConfigs();
+    updateDocsTabVisibility();
   });
 
   // Copy server URL
@@ -225,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
         updateClientConfigs();
+        updateDocsTabVisibility();
       } else {
         statusText.textContent = 'Máy chủ ngoại tuyến';
         totalCountEl.textContent = '---';
