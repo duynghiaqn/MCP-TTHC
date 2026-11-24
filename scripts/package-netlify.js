@@ -87,9 +87,6 @@ try {
   };
   writeFileSync(resolve(netlifyDeployDir, 'package.json'), JSON.stringify(deployPkg, null, 2), 'utf-8');
 
-  if (existsSync(resolve(rootDir, 'tsconfig.json'))) {
-    cpSync(resolve(rootDir, 'tsconfig.json'), resolve(netlifyDeployDir, 'tsconfig.json'));
-  }
   if (existsSync(resolve(rootDir, 'plugin.json'))) {
     cpSync(resolve(rootDir, 'plugin.json'), resolve(netlifyDeployDir, 'plugin.json'));
   }
