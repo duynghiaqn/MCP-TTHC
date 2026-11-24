@@ -1,8 +1,15 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { z } from 'zod';
+import { McpServer, ResourceTemplate, InMemoryTransport } from '@modelcontextprotocol/server';
+import * as z from 'zod/v4';
 import { tthcDataService } from './data-service.js';
-import { APP_NAME, APP_VERSION, APP_AUTHOR, APP_TITLE, MCP_PROTOCOL_VERSION } from './version.js';
+import {
+  APP_NAME,
+  APP_VERSION,
+  APP_AUTHOR,
+  APP_TITLE,
+  MCP_PROTOCOL_VERSION,
+  SUPPORTED_MCP_PROTOCOL_VERSIONS,
+  MCP_SERVER_ICONS
+} from './version.js';
 import { isAuthRequired } from './auth.js';
 import type { SearchResult, TTHCIndexItem } from './types.js';
 
@@ -587,16 +594,33 @@ export const OpenAiFetchSchema = z.object({
  * Creates and configures the MCP Server instance with all TTHC tools
  */
 export function createTTHCMcpServer(): McpServer {
-  const server = new McpServer({
-    name: APP_NAME,
-    version: APP_VERSION
-  });
+  const server = new McpServer(
+    {
+      name: APP_NAME,
+      title: APP_TITLE,
+      version: APP_VERSION,
+      icons: MCP_SERVER_ICONS
+    },
+    {
+      capabilities: {
+        tools: {},
+        resources: {},
+        prompts: {}
+      }
+    }
+  );
 
   // TOOL 1: Tra cứu & Truy xuất dữ liệu chi tiết TTHC
-  server.tool(
+  server.registerTool(
     'tra_cuu_theo_ma_tthc',
-    'Tra cứu và truy xuất thông tin chi tiết chuyên sâu của Thủ tục Hành chính theo mã TTHC (ví dụ: "6.006781", "1.117102") hoặc tên/ID thủ tục. Hỗ trợ lọc theo từng phân mục cụ thể (hồ sơ, trình tự, chi phí, thời hạn giải quyết, căn cứ pháp lý, yêu cầu điều kiện) và tùy chọn định dạng trả về (Markdown hoặc JSON có cấu trúc).',
-    TraCuuChiTietSchema.shape,
+    {
+      title: 'Tra cứu chi tiết TTHC theo mã',
+      description:
+        'Tra cứu và truy xuất thông tin chi tiết chuyên sâu của Thủ tục Hành chính theo mã TTHC (ví dụ: "6.006781", "1.117102") hoặc tên/ID thủ tục. Hỗ trợ lọc theo từng phân mục cụ thể (hồ sơ, trình tự, chi phí, thời hạn giải quyết, căn cứ pháp lý, yêu cầu điều kiện) và tùy chọn định dạng trả về (Markdown hoặc JSON có cấu trúc).',
+      inputSchema: TraCuuChiTietSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
+      icons: MCP_SERVER_ICONS
+    },
     async ({ ma_tthc, phan_muc, tra_cuu_dvctt, province_code, dinh_dang }) => {
       const result = await tthcDataService.getDetail(ma_tthc, {
         phan_muc,
@@ -605,6 +629,14 @@ export function createTTHCMcpServer(): McpServer {
         dinh_dang
       });
 
+      const structured = {
+        ma_tthc: result.indexItem?.ma_tthc || result.detail?.code || ma_tthc,
+        ten_tthc: result.detail?.name || result.indexItem?.ten_tthc,
+        isFullProcess: Boolean((result.jsonData as any)?.isFullProcess),
+        online_service: (result.jsonData as any)?.online_service || null,
+        htgq: result.htgq || null
+      };
+
       if (dinh_dang === 'json') {
         return {
           content: [
@@ -612,7 +644,8 @@ export function createTTHCMcpServer(): McpServer {
               type: 'text',
               text: JSON.stringify(result, null, 2)
             }
-          ]
+          ],
+          structuredContent: structured
         };
       }
 
@@ -622,16 +655,22 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text',
             text: result.markdown
           }
-        ]
+        ],
+        structuredContent: structured
       };
     }
   );
 
   // TOOL 2: Tìm kiếm theo tên TTHC
-  server.tool(
+  server.registerTool(
     'tim_kiem_theo_ten_tthc',
-    'Tìm kiếm danh sách Thủ tục Hành chính theo tên hoặc từ khóa (hỗ trợ cả tiếng Việt có dấu và không dấu). Trả về danh sách tóm tắt gồm mã TTHC, tên, cấp thực hiện, lĩnh vực và cơ quan thực hiện.',
-    TimKiemTheoTenSchema.shape,
+    {
+      title: 'Tìm kiếm TTHC theo tên',
+      description:
+        'Tìm kiếm danh sách Thủ tục Hành chính theo tên hoặc từ khóa (hỗ trợ cả tiếng Việt có dấu và không dấu). Trả về danh sách tóm tắt gồm mã TTHC, tên, cấp thực hiện, lĩnh vực và cơ quan thực hiện.',
+      inputSchema: TimKiemTheoTenSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async ({ ten_tthc, limit, page }) => {
       const result = await tthcDataService.searchByName(ten_tthc, page, limit);
       const md = formatSearchResultsToMarkdown(
@@ -651,10 +690,15 @@ export function createTTHCMcpServer(): McpServer {
   );
 
   // TOOL 3: Lọc theo Cấp thực hiện
-  server.tool(
+  server.registerTool(
     'loc_theo_cap_thuc_hien',
-    'Lọc danh sách Thủ tục Hành chính theo Cấp thực hiện (ví dụ: "Cấp Bộ", "Cấp tỉnh", "Cấp xã", "Cơ quan khác"). Có thể kết hợp thêm từ khóa tìm kiếm.',
-    LocTheoCapSchema.shape,
+    {
+      title: 'Lọc TTHC theo cấp thực hiện',
+      description:
+        'Lọc danh sách Thủ tục Hành chính theo Cấp thực hiện (ví dụ: "Cấp Bộ", "Cấp tỉnh", "Cấp xã", "Cơ quan khác"). Có thể kết hợp thêm từ khóa tìm kiếm.',
+      inputSchema: LocTheoCapSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async ({ cap_thuc_hien, tu_khoa, limit, page }) => {
       const result = await tthcDataService.filterByCap(
         cap_thuc_hien,
@@ -679,10 +723,15 @@ export function createTTHCMcpServer(): McpServer {
   );
 
   // TOOL 4: Lọc theo Lĩnh vực
-  server.tool(
+  server.registerTool(
     'loc_theo_linh_vuc',
-    'Lọc danh sách Thủ tục Hành chính theo Lĩnh vực thiết yếu (ví dụ: "Hộ tịch", "Kinh doanh", "Xây dựng", "Đất đai", "Thuế", "Hải quan", "Xuất nhập khẩu", "Đăng kiểm"...). Có thể kết hợp từ khóa tìm kiếm.',
-    LocTheoLinhVucSchema.shape,
+    {
+      title: 'Lọc TTHC theo lĩnh vực',
+      description:
+        'Lọc danh sách Thủ tục Hành chính theo Lĩnh vực thiết yếu (ví dụ: "Hộ tịch", "Kinh doanh", "Xây dựng", "Đất đai", "Thuế", "Hải quan", "Xuất nhập khẩu", "Đăng kiểm"...). Có thể kết hợp từ khóa tìm kiếm.',
+      inputSchema: LocTheoLinhVucSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async ({ linh_vuc, tu_khoa, limit, page }) => {
       const result = await tthcDataService.filterByLinhVuc(
         linh_vuc,
@@ -707,10 +756,15 @@ export function createTTHCMcpServer(): McpServer {
   );
 
   // TOOL 5: Tìm kiếm tổng hợp đa tiêu chí
-  server.tool(
+  server.registerTool(
     'tim_kiem_tong_hop',
-    'Tìm kiếm nâng cao kết hợp nhiều tiêu chí cùng lúc: từ khóa tên, lĩnh vực, cấp thực hiện, cơ quan thực hiện/ban hành và trạng thái thu phí.',
-    TimKiemTongHopSchema.shape,
+    {
+      title: 'Tìm kiếm TTHC tổng hợp đa tiêu chí',
+      description:
+        'Tìm kiếm nâng cao kết hợp nhiều tiêu chí cùng lúc: từ khóa tên, lĩnh vực, cấp thực hiện, cơ quan thực hiện/ban hành và trạng thái thu phí.',
+      inputSchema: TimKiemTongHopSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async options => {
       const coQuan =
         options.co_quan ||
@@ -745,10 +799,15 @@ export function createTTHCMcpServer(): McpServer {
   );
 
   // TOOL 6: Gợi ý các thủ tục hành chính liên quan
-  server.tool(
+  server.registerTool(
     'goi_y_thu_tuc_lien_quan',
-    'Gợi ý các thủ tục hành chính liên quan theo chuỗi sự kiện đời sống / sản xuất kinh doanh (ví dụ: hộ kinh doanh, cư trú, y tế, sinh con, kết hôn, khai tử, mua bán chuyển nhượng nhà đất, cấp đổi giấy phép lái xe, thành lập doanh nghiệp, xuất nhập cảnh, hộ chiếu...) hoặc gợi ý các thủ tục liên thông cùng lĩnh vực/cơ quan với một thủ tục cụ thể. Rất hữu ích khi người dân/doanh nghiệp cần biết các bước tiếp theo phải làm.',
-    GoiYThuTucLienQuanSchema.shape,
+    {
+      title: 'Gợi ý thủ tục liên quan',
+      description:
+        'Gợi ý các thủ tục hành chính liên quan theo chuỗi sự kiện đời sống / sản xuất kinh doanh (ví dụ: hộ kinh doanh, cư trú, y tế, sinh con, kết hôn, khai tử, mua bán chuyển nhượng nhà đất, cấp đổi giấy phép lái xe, thành lập doanh nghiệp, xuất nhập cảnh, hộ chiếu...) hoặc gợi ý các thủ tục liên thông cùng lĩnh vực/cơ quan với một thủ tục cụ thể. Rất hữu ích khi người dân/doanh nghiệp cần biết các bước tiếp theo phải làm.',
+      inputSchema: GoiYThuTucLienQuanSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async ({ ma_hoac_ten_tthc, chu_de, limit, dinh_dang }) => {
       const result = await tthcDataService.getRelatedProcedures({
         ma_hoac_ten_tthc,
@@ -763,7 +822,8 @@ export function createTTHCMcpServer(): McpServer {
               type: 'text',
               text: JSON.stringify(result, null, 2)
             }
-          ]
+          ],
+          structuredContent: result as unknown as Record<string, unknown>
         };
       }
 
@@ -773,16 +833,22 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text',
             text: result.markdown
           }
-        ]
+        ],
+        structuredContent: result as unknown as Record<string, unknown>
       };
     }
   );
 
   // TOOL 7: Thông tin phiên bản & Hệ thống MCP
-  server.tool(
+  server.registerTool(
     'thong_tin_mcp_server',
-    'Lấy thông tin chi tiết về phiên bản ứng dụng MCP, tác giả KynChou, chuẩn giao thức, số lượng TTHC, số lượng Quyết định công bố (QĐCB) và thời gian cập nhật dữ liệu mới nhất.',
-    ThongTinMcpServerSchema.shape,
+    {
+      title: 'Thông tin hệ thống MCP TTHC',
+      description:
+        'Lấy thông tin chi tiết về phiên bản ứng dụng MCP, tác giả KynChou, chuẩn giao thức, số lượng TTHC, số lượng Quyết định công bố (QĐCB) và thời gian cập nhật dữ liệu mới nhất.',
+      inputSchema: ThongTinMcpServerSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async () => {
       const [stats, qdcbStats] = await Promise.all([
         tthcDataService.getStats(),
@@ -829,7 +895,17 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text',
             text: lines.join('\n')
           }
-        ]
+        ],
+        structuredContent: {
+          name: APP_NAME,
+          title: APP_TITLE,
+          version: APP_VERSION,
+          author: APP_AUTHOR,
+          protocolVersion: MCP_PROTOCOL_VERSION,
+          supportedProtocolVersions: [...SUPPORTED_MCP_PROTOCOL_VERSIONS],
+          tthc: stats,
+          qdcb: qdcbStats
+        }
       };
     }
   );
@@ -844,7 +920,8 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text' as const,
             text: JSON.stringify(result, null, 2)
           }
-        ]
+        ],
+        structuredContent: result as unknown as Record<string, unknown>
       };
     }
     return {
@@ -857,17 +934,27 @@ export function createTTHCMcpServer(): McpServer {
     };
   };
 
-  server.tool(
+  server.registerTool(
     'tra_cuu_tthc_gia_lai',
-    'Tra cứu chuyên sâu các Thủ tục Hành chính thuộc tỉnh Gia Lai. Cơ quan thực hiện: tỉnh Gia Lai, các TTHC cấp tỉnh, cấp xã, sở ngành (Sở Xây dựng, Sở Nông nghiệp và Môi trường...), Văn phòng Đăng ký đất đai và các Chi nhánh cấp huyện (Pleiku, Chư Sê, Chư Prông, Đak Đoa, An Khê, Ayun Pa, Kbang...), Ban Quản lý Khu kinh tế, Chủ tịch UBND tỉnh Gia Lai... Hỗ trợ lọc theo cấp, cơ quan, lĩnh vực, từ khóa hoặc tra cứu chi tiết đầy đủ từng thủ tục.',
-    TraCuuTthcGiaLaiSchema.shape,
+    {
+      title: 'Tra cứu TTHC tỉnh Gia Lai',
+      description:
+        'Tra cứu chuyên sâu các Thủ tục Hành chính thuộc tỉnh Gia Lai. Cơ quan thực hiện: tỉnh Gia Lai, các TTHC cấp tỉnh, cấp xã, sở ngành (Sở Xây dựng, Sở Nông nghiệp và Môi trường...), Văn phòng Đăng ký đất đai và các Chi nhánh cấp huyện (Pleiku, Chư Sê, Chư Prông, Đak Đoa, An Khê, Ayun Pa, Kbang...), Ban Quản lý Khu kinh tế, Chủ tịch UBND tỉnh Gia Lai... Hỗ trợ lọc theo cấp, cơ quan, lĩnh vực, từ khóa hoặc tra cứu chi tiết đầy đủ từng thủ tục.',
+      inputSchema: TraCuuTthcGiaLaiSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     giaLaiHandler
   );
 
-  server.tool(
+  server.registerTool(
     'tthc_gia_lai',
-    'Tra cứu chi tiết các Thủ tục Hành chính thuộc tỉnh Gia Lai (Cơ quan thực hiện: tỉnh Gia Lai, cấp tỉnh, cấp xã, sở ngành, Chủ tịch UBND, Văn phòng Đăng ký đất đai...). Hỗ trợ tra cứu chi tiết các bước, hồ sơ hoặc danh sách.',
-    TraCuuTthcGiaLaiSchema.shape,
+    {
+      title: 'TTHC tỉnh Gia Lai (alias)',
+      description:
+        'Tra cứu chi tiết các Thủ tục Hành chính thuộc tỉnh Gia Lai (Cơ quan thực hiện: tỉnh Gia Lai, cấp tỉnh, cấp xã, sở ngành, Chủ tịch UBND, Văn phòng Đăng ký đất đai...). Hỗ trợ tra cứu chi tiết các bước, hồ sơ hoặc danh sách.',
+      inputSchema: TraCuuTthcGiaLaiSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     giaLaiHandler
   );
 
@@ -881,7 +968,8 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text' as const,
             text: JSON.stringify(result, null, 2)
           }
-        ]
+        ],
+        structuredContent: result as unknown as Record<string, unknown>
       };
     }
     return {
@@ -894,17 +982,27 @@ export function createTTHCMcpServer(): McpServer {
     };
   };
 
-  server.tool(
+  server.registerTool(
     'tra_cuu_tthc_noi_bo',
-    'Tra cứu chuyên sâu các Thủ tục Hành chính nội bộ trong hệ thống hành chính nhà nước (theo Nghị định số 385/2026/NĐ-CP của Chính phủ về kiểm soát thủ tục hành chính). Gồm 2 nhóm: TTHC giữa các cơ quan hành chính nhà nước (liên thông, đa cơ quan/cấp) và TTHC nội bộ trong từng cơ quan (Bộ ngành, UBND cấp tỉnh, Sở ngành...). Hỗ trợ lọc theo từ khóa, mã TTHC, cơ quan thực hiện/công bố, lĩnh vực, cấp thực hiện, nhóm nội bộ và xuất chi tiết hồ sơ & quy trình.',
-    TraCuuTthcNoiBoSchema.shape,
+    {
+      title: 'Tra cứu TTHC Nội bộ',
+      description:
+        'Tra cứu chuyên sâu các Thủ tục Hành chính nội bộ trong hệ thống hành chính nhà nước (theo Nghị định số 385/2026/NĐ-CP của Chính phủ về kiểm soát thủ tục hành chính). Gồm 2 nhóm: TTHC giữa các cơ quan hành chính nhà nước (liên thông, đa cơ quan/cấp) và TTHC nội bộ trong từng cơ quan (Bộ ngành, UBND cấp tỉnh, Sở ngành...). Hỗ trợ lọc theo từ khóa, mã TTHC, cơ quan thực hiện/công bố, lĩnh vực, cấp thực hiện, nhóm nội bộ và xuất chi tiết hồ sơ & quy trình.',
+      inputSchema: TraCuuTthcNoiBoSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     noiBoHandler
   );
 
-  server.tool(
+  server.registerTool(
     'tthc_noi_bo',
-    'Tra cứu chi tiết các Thủ tục Hành chính nội bộ (giữa các cơ quan nhà nước và trong nội bộ cơ quan theo Nghị định số 385/2026/NĐ-CP của Chính phủ về kiểm soát thủ tục hành chính). Hỗ trợ lọc theo cơ quan, lĩnh vực, cấp thực hiện hoặc xuất chi tiết theo mã thủ tục.',
-    TraCuuTthcNoiBoSchema.shape,
+    {
+      title: 'TTHC Nội bộ (alias)',
+      description:
+        'Tra cứu chi tiết các Thủ tục Hành chính nội bộ (giữa các cơ quan nhà nước và trong nội bộ cơ quan theo Nghị định số 385/2026/NĐ-CP của Chính phủ về kiểm soát thủ tục hành chính). Hỗ trợ lọc theo cơ quan, lĩnh vực, cấp thực hiện hoặc xuất chi tiết theo mã thủ tục.',
+      inputSchema: TraCuuTthcNoiBoSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     noiBoHandler
   );
 
@@ -918,7 +1016,8 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text' as const,
             text: JSON.stringify(result, null, 2)
           }
-        ]
+        ],
+        structuredContent: result as unknown as Record<string, unknown>
       };
     }
     return {
@@ -931,24 +1030,38 @@ export function createTTHCMcpServer(): McpServer {
     };
   };
 
-  server.tool(
+  server.registerTool(
     'tra_cuu_tthc_noi_bo_gia_lai',
-    'Tra cứu chuyên sâu các Thủ tục Hành chính Nội bộ thuộc phạm vi tỉnh Gia Lai (cấp tỉnh, cấp xã, UBND tỉnh Gia Lai, Chủ tịch UBND tỉnh, các Sở ban ngành địa phương). Bao gồm TTHC giữa các cơ quan hành chính nhà nước và TTHC nội bộ trong từng cơ quan trên địa bàn tỉnh Gia Lai theo Nghị định số 385/2026/NĐ-CP. Hỗ trợ lọc theo từ khóa, mã TTHC, cơ quan, lĩnh vực, cấp thực hiện, nhóm nội bộ và xuất chi tiết quy trình & hồ sơ.',
-    TraCuuTthcNoiBoGiaLaiSchema.shape,
+    {
+      title: 'Tra cứu TTHC Nội bộ tỉnh Gia Lai',
+      description:
+        'Tra cứu chuyên sâu các Thủ tục Hành chính Nội bộ thuộc phạm vi tỉnh Gia Lai (cấp tỉnh, cấp xã, UBND tỉnh Gia Lai, Chủ tịch UBND tỉnh, các Sở ban ngành địa phương). Bao gồm TTHC giữa các cơ quan hành chính nhà nước và TTHC nội bộ trong từng cơ quan trên địa bàn tỉnh Gia Lai theo Nghị định số 385/2026/NĐ-CP. Hỗ trợ lọc theo từ khóa, mã TTHC, cơ quan, lĩnh vực, cấp thực hiện, nhóm nội bộ và xuất chi tiết quy trình & hồ sơ.',
+      inputSchema: TraCuuTthcNoiBoGiaLaiSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     noiBoGiaLaiHandler
   );
 
-  server.tool(
+  server.registerTool(
     'tthc_noi_bo_gia_lai',
-    'Tra cứu chi tiết các Thủ tục Hành chính Nội bộ tỉnh Gia Lai (alias của tra_cuu_tthc_noi_bo_gia_lai). Hỗ trợ lọc theo cấp tỉnh, cấp xã, cơ quan ban ngành hoặc tra cứu toàn văn theo mã TTHC.',
-    TraCuuTthcNoiBoGiaLaiSchema.shape,
+    {
+      title: 'TTHC Nội bộ Gia Lai (alias)',
+      description:
+        'Tra cứu chi tiết các Thủ tục Hành chính Nội bộ tỉnh Gia Lai (alias của tra_cuu_tthc_noi_bo_gia_lai). Hỗ trợ lọc theo cấp tỉnh, cấp xã, cơ quan ban ngành hoặc tra cứu toàn văn theo mã TTHC.',
+      inputSchema: TraCuuTthcNoiBoGiaLaiSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     noiBoGiaLaiHandler
   );
 
-  server.tool(
+  server.registerTool(
     'tthc_gia_lai_noi_bo',
-    'Tra cứu TTHC Nội bộ tỉnh Gia Lai (alias rút gọn của tra_cuu_tthc_noi_bo_gia_lai).',
-    TraCuuTthcNoiBoGiaLaiSchema.shape,
+    {
+      title: 'TTHC Gia Lai Nội bộ (alias)',
+      description: 'Tra cứu TTHC Nội bộ tỉnh Gia Lai (alias rút gọn của tra_cuu_tthc_noi_bo_gia_lai).',
+      inputSchema: TraCuuTthcNoiBoGiaLaiSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     noiBoGiaLaiHandler
   );
 
@@ -962,7 +1075,8 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text' as const,
             text: JSON.stringify(result, null, 2)
           }
-        ]
+        ],
+        structuredContent: result as unknown as Record<string, unknown>
       };
     }
     return {
@@ -971,21 +1085,32 @@ export function createTTHCMcpServer(): McpServer {
           type: 'text' as const,
           text: result.markdown
         }
-      ]
+      ],
+      structuredContent: result as unknown as Record<string, unknown>
     };
   };
 
-  server.tool(
+  server.registerTool(
     'bien_dong_gia_lai',
-    'Phân tích chi tiết biến động tăng/giảm Thủ tục hành chính tỉnh Gia Lai và Thủ tục hành chính Nội bộ tỉnh Gia Lai từ dữ liệu đối soát mới nhất (Crawler-TTHC/data-gl). Thống kê số lượng kỳ trước, hiện tại, số tăng (mới), số giảm (bãi bỏ), biến động ròng theo từng nhóm (Hành chính vs Nội bộ), cơ cấu cấp tỉnh/cấp xã, top lĩnh vực/cơ quan biến động và danh sách từng thủ tục cụ thể.',
-    PhanTichBienDongGiaLaiSchema.shape,
+    {
+      title: 'Phân tích biến động TTHC Gia Lai',
+      description:
+        'Phân tích chi tiết biến động tăng/giảm Thủ tục hành chính tỉnh Gia Lai và Thủ tục hành chính Nội bộ tỉnh Gia Lai từ dữ liệu đối soát mới nhất (Crawler-TTHC/data-gl). Thống kê số lượng kỳ trước, hiện tại, số tăng (mới), số giảm (bãi bỏ), biến động ròng theo từng nhóm (Hành chính vs Nội bộ), cơ cấu cấp tỉnh/cấp xã, top lĩnh vực/cơ quan biến động và danh sách từng thủ tục cụ thể.',
+      inputSchema: PhanTichBienDongGiaLaiSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     giaLaiChangeHandler
   );
 
-  server.tool(
+  server.registerTool(
     'bien_dong_tthc_gia_lai',
-    'Phân tích tăng/giảm Thủ tục hành chính Gia Lai & TTHC Nội bộ Gia Lai (alias của bien_dong_gia_lai).',
-    PhanTichBienDongGiaLaiSchema.shape,
+    {
+      title: 'Biến động TTHC Gia Lai (alias)',
+      description:
+        'Phân tích tăng/giảm Thủ tục hành chính Gia Lai & TTHC Nội bộ Gia Lai (alias của bien_dong_gia_lai).',
+      inputSchema: PhanTichBienDongGiaLaiSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     giaLaiChangeHandler
   );
 
@@ -1011,7 +1136,8 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text' as const,
             text: JSON.stringify(result, null, 2)
           }
-        ]
+        ],
+        structuredContent: result as unknown as Record<string, unknown>
       };
     }
 
@@ -1025,24 +1151,37 @@ export function createTTHCMcpServer(): McpServer {
     };
   };
 
-  server.tool(
+  server.registerTool(
     'tra_cuu_quyet_dinh_cong_bo',
-    'Tra cứu danh mục Quyết định công bố (QĐCB) thủ tục hành chính từ nguồn Crawler-TTHC/qdcb (gồm ~2,000 QĐCB cấp Bộ, Tỉnh trên toàn quốc). Hỗ trợ tìm theo từ khóa trích yếu, số quyết định (vd: 807/QĐ-TTCP), cơ quan ban hành, lĩnh vực, năm/tháng hoặc lấy danh sách QĐCB mới ban hành trong tháng.',
-    TraCuuQdcbSchema.shape,
+    {
+      title: 'Tra cứu Quyết định công bố (QĐCB)',
+      description:
+        'Tra cứu danh mục Quyết định công bố (QĐCB) thủ tục hành chính từ nguồn Crawler-TTHC/qdcb (gồm ~2,000 QĐCB cấp Bộ, Tỉnh trên toàn quốc). Hỗ trợ tìm theo từ khóa trích yếu, số quyết định (vd: 807/QĐ-TTCP), cơ quan ban hành, lĩnh vực, năm/tháng hoặc lấy danh sách QĐCB mới ban hành trong tháng.',
+      inputSchema: TraCuuQdcbSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     qdcbSearchHandler
   );
 
-  server.tool(
+  server.registerTool(
     'tra_cuu_qdcb',
-    'Tra cứu Quyết định công bố TTHC (alias rút gọn của tra_cuu_quyet_dinh_cong_bo).',
-    TraCuuQdcbSchema.shape,
+    {
+      title: 'Tra cứu QĐCB (alias)',
+      description: 'Tra cứu Quyết định công bố TTHC (alias rút gọn của tra_cuu_quyet_dinh_cong_bo).',
+      inputSchema: TraCuuQdcbSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     qdcbSearchHandler
   );
 
-  server.tool(
+  server.registerTool(
     'tim_kiem_qdcb',
-    'Tìm kiếm Quyết định công bố TTHC (alias của tra_cuu_quyet_dinh_cong_bo).',
-    TraCuuQdcbSchema.shape,
+    {
+      title: 'Tìm kiếm QĐCB (alias)',
+      description: 'Tìm kiếm Quyết định công bố TTHC (alias của tra_cuu_quyet_dinh_cong_bo).',
+      inputSchema: TraCuuQdcbSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     qdcbSearchHandler
   );
 
@@ -1057,7 +1196,8 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text' as const,
             text: JSON.stringify(result.data || result, null, 2)
           }
-        ]
+        ],
+        structuredContent: (result.data || result) as unknown as Record<string, unknown>
       };
     }
 
@@ -1067,36 +1207,55 @@ export function createTTHCMcpServer(): McpServer {
           type: 'text' as const,
           text: result.markdown
         }
-      ]
+      ],
+      structuredContent: (result.data || result) as unknown as Record<string, unknown>
     };
   };
 
-  server.tool(
+  server.registerTool(
     'chi_tiet_quyet_dinh_cong_bo',
-    'Lấy thông tin chi tiết toàn văn Quyết định công bố (QĐCB) theo Số quyết định (vd: 807/QĐ-TTCP) hoặc UUID, bao gồm trích yếu, cơ quan ban hành, ngày ký, ngày công khai và toàn bộ danh sách các Thủ tục hành chính kèm theo (Công bố mới, Sửa đổi bổ sung, Bãi bỏ, Thay thế).',
-    ChiTietQdcbSchema.shape,
+    {
+      title: 'Chi tiết Quyết định công bố (QĐCB)',
+      description:
+        'Lấy thông tin chi tiết toàn văn Quyết định công bố (QĐCB) theo Số quyết định (vd: 807/QĐ-TTCP) hoặc UUID, bao gồm trích yếu, cơ quan ban hành, ngày ký, ngày công khai và toàn bộ danh sách các Thủ tục hành chính kèm theo (Công bố mới, Sửa đổi bổ sung, Bãi bỏ, Thay thế).',
+      inputSchema: ChiTietQdcbSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     qdcbDetailHandler
   );
 
-  server.tool(
+  server.registerTool(
     'chi_tiet_qdcb',
-    'Xem chi tiết Quyết định công bố và các TTHC đính kèm (alias của chi_tiet_quyet_dinh_cong_bo).',
-    ChiTietQdcbSchema.shape,
+    {
+      title: 'Chi tiết QĐCB (alias)',
+      description: 'Xem chi tiết Quyết định công bố và các TTHC đính kèm (alias của chi_tiet_quyet_dinh_cong_bo).',
+      inputSchema: ChiTietQdcbSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     qdcbDetailHandler
   );
 
-  server.tool(
+  server.registerTool(
     'lay_qdcb_theo_so',
-    'Lấy chi tiết Quyết định công bố theo Số quyết định (alias của chi_tiet_quyet_dinh_cong_bo).',
-    ChiTietQdcbSchema.shape,
+    {
+      title: 'Lấy QĐCB theo số (alias)',
+      description: 'Lấy chi tiết Quyết định công bố theo Số quyết định (alias của chi_tiet_quyet_dinh_cong_bo).',
+      inputSchema: ChiTietQdcbSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     qdcbDetailHandler
   );
 
   // TOOL 9: `search` chuẩn OpenAI (bắt buộc cho ChatGPT Deep Research / Company Knowledge connectors)
-  server.tool(
+  server.registerTool(
     'search',
-    'Tìm kiếm thủ tục hành chính Việt Nam trong CSDL quốc gia. Trả về JSON {"results":[{"id","title","url"}]}; dùng tool `fetch` với `id` để lấy toàn văn.',
-    OpenAiSearchSchema.shape,
+    {
+      title: 'Tìm kiếm TTHC (OpenAI Standard)',
+      description:
+        'Tìm kiếm thủ tục hành chính Việt Nam trong CSDL quốc gia. Trả về JSON {"results":[{"id","title","url"}]}; dùng tool `fetch` với `id` để lấy toàn văn.',
+      inputSchema: OpenAiSearchSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async ({ query }) => {
       const result = await tthcDataService.searchByName(query, 1, 10);
       const results = result.data.map(item => ({
@@ -1104,15 +1263,23 @@ export function createTTHCMcpServer(): McpServer {
         title: item.ten_tthc,
         url: item.id ? `${DVC_BASE_URL}/${item.id}` : DVC_BASE_URL
       }));
-      return { content: [{ type: 'text', text: JSON.stringify({ results }) }] };
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ results }) }],
+        structuredContent: { results }
+      };
     }
   );
 
   // TOOL 10: `fetch` chuẩn OpenAI
-  server.tool(
+  server.registerTool(
     'fetch',
-    'Lấy toàn văn chi tiết một thủ tục hành chính theo `id` (mã TTHC) trả về từ tool `search`. Trả về JSON {"id","title","text","url","metadata"}.',
-    OpenAiFetchSchema.shape,
+    {
+      title: 'Truy xuất toàn văn TTHC (OpenAI Standard)',
+      description:
+        'Lấy toàn văn chi tiết một thủ tục hành chính theo `id` (mã TTHC) trả về từ tool `search`. Trả về JSON {"id","title","text","url","metadata"}.',
+      inputSchema: OpenAiFetchSchema,
+      annotations: READ_ONLY_TOOL_ANNOTATIONS
+    },
     async ({ id }) => {
       const detail = await tthcDataService.getDetail(id, { phan_muc: 'tat_ca', dinh_dang: 'markdown' });
       const item = detail.indexItem;
@@ -1127,18 +1294,32 @@ export function createTTHCMcpServer(): McpServer {
           cap_thuc_hien: item?.cap_thuc_hien,
           linh_vuc: item?.linh_vuc,
           co_quan_thuc_hien: item?.co_quan_thuc_hien,
-          co_thu_phi: item?.co_thu_phi
+          co_thu_phi: item?.co_thu_phi,
+          isFullProcess: Boolean((detail.jsonData as any)?.isFullProcess)
         }
       };
-      return { content: [{ type: 'text', text: JSON.stringify(doc) }] };
+      return {
+        content: [{ type: 'text', text: JSON.stringify(doc) }],
+        structuredContent: doc
+      };
     }
   );
 
   // TOOL 11: Làm mới & Tự động cập nhật dữ liệu TTHC
-  server.tool(
+  server.registerTool(
     'lam_moi_du_lieu_tthc',
-    'Kiểm tra và tự động cập nhật cơ sở dữ liệu TTHC Quốc gia mới nhất từ CDN/GitHub. Nếu phát hiện phiên bản mới, hệ thống tự động tải lại index, làm mới danh mục và dọn dẹp bộ nhớ đệm (cache invalidation). Hỗ trợ tùy chọn bat_buoc để nạp mới hoàn toàn.',
-    LamMoiDuLieuSchema.shape,
+    {
+      title: 'Làm mới & đồng bộ dữ liệu TTHC',
+      description:
+        'Kiểm tra và tự động cập nhật cơ sở dữ liệu TTHC Quốc gia mới nhất từ CDN/GitHub. Nếu phát hiện phiên bản mới, hệ thống tự động tải lại index, làm mới danh mục và dọn dẹp bộ nhớ đệm (cache invalidation). Hỗ trợ tùy chọn bat_buoc để nạp mới hoàn toàn.',
+      inputSchema: LamMoiDuLieuSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
     async ({ bat_buoc }) => {
       const updateResult = await tthcDataService.checkAndAutoUpdate(bat_buoc);
       const lines: string[] = [];
@@ -1155,9 +1336,181 @@ export function createTTHCMcpServer(): McpServer {
             type: 'text',
             text: lines.join('\n')
           }
+        ],
+        structuredContent: updateResult as unknown as Record<string, unknown>
+      };
+    }
+  );
+
+  // =========================================================================
+  // MCP RESOURCES (Chuẩn MCP 2026-07-28 & SDK v2)
+  // =========================================================================
+  server.registerResource(
+    'tthc_system_stats',
+    'tthc://stats',
+    {
+      title: 'Thống kê hệ thống TTHC & DVCTT',
+      description: 'Thống kê tổng số TTHC, QĐCB và tỷ lệ cung cấp dịch vụ công trực tuyến toàn quốc',
+      mimeType: 'application/json',
+      icons: MCP_SERVER_ICONS
+    },
+    async uri => {
+      const [stats, qdcb] = await Promise.all([
+        tthcDataService.getStats(),
+        tthcDataService.getQDCBStats().catch(() => null)
+      ]);
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ tthc: stats, qdcb }, null, 2)
+          }
         ]
       };
     }
+  );
+
+  server.registerResource(
+    'gia_lai_changes_report',
+    'tthc://gia-lai/changes',
+    {
+      title: 'Biến động TTHC & TTHC Nội bộ Gia Lai',
+      description: 'Dữ liệu phân tích tăng/giảm TTHC và TTHC Nội bộ tỉnh Gia Lai mới nhất',
+      mimeType: 'application/json',
+      icons: MCP_SERVER_ICONS
+    },
+    async uri => {
+      const report = await tthcDataService.analyzeGiaLaiChanges({ nhom: 'tat_ca', loai_bien_dong: 'tat_ca', limit: 50 });
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(report, null, 2)
+          }
+        ]
+      };
+    }
+  );
+
+  server.registerResource(
+    'qdcb_monthly_new',
+    'tthc://qdcb/monthly',
+    {
+      title: 'Quyết định công bố mới trong tháng',
+      description: 'Danh sách các Quyết định công bố thủ tục hành chính mới ban hành trong tháng',
+      mimeType: 'application/json',
+      icons: MCP_SERVER_ICONS
+    },
+    async uri => {
+      const monthly = await tthcDataService.getQDCBMonthlyNew();
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(monthly, null, 2)
+          }
+        ]
+      };
+    }
+  );
+
+  server.registerResource(
+    'tthc_procedure_detail',
+    new ResourceTemplate('tthc://procedure/{code}', { list: undefined }),
+    {
+      title: 'Chi tiết Thủ tục Hành chính theo mã',
+      description: 'Truy xuất toàn văn hồ sơ, trình tự, lệ phí, mức độ DVCTT (online_service + isFullProcess) của một TTHC',
+      mimeType: 'text/markdown',
+      icons: MCP_SERVER_ICONS
+    },
+    async (uri, { code }) => {
+      const codeStr = Array.isArray(code) ? code[0] : String(code || '');
+      const detail = await tthcDataService.getDetail(codeStr, { phan_muc: 'tat_ca', dinh_dang: 'markdown' });
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'text/markdown',
+            text: detail.markdown
+          }
+        ]
+      };
+    }
+  );
+
+  // =========================================================================
+  // MCP PROMPTS (Chuẩn MCP 2026-07-28 & SDK v2)
+  // =========================================================================
+  server.registerPrompt(
+    'huong_dan_ho_so_tthc',
+    {
+      title: 'Hướng dẫn chuẩn bị hồ sơ TTHC',
+      description: 'Tạo hướng dẫn từng bước cho công dân/doanh nghiệp chuẩn bị hồ sơ, lệ phí và nộp trực tuyến cho một TTHC',
+      argsSchema: {
+        ma_hoac_ten_tthc: z.string().describe('Mã TTHC (vd: 6.006781) hoặc tên thủ tục')
+      },
+      icons: MCP_SERVER_ICONS
+    },
+    ({ ma_hoac_ten_tthc }) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: `Hãy dùng tool tra_cuu_theo_ma_tthc để tra cứu thủ tục "${ma_hoac_ten_tthc}", sau đó trình bày rõ: (1) Mức độ DVCTT và link nộp trực tuyến nếu có, (2) Thành phần hồ sơ cần chuẩn bị, (3) Trình tự các bước, (4) Thời hạn và phí/lệ phí.`
+          }
+        }
+      ]
+    })
+  );
+
+  server.registerPrompt(
+    'bao_cao_bien_dong_gia_lai',
+    {
+      title: 'Báo cáo biến động TTHC Gia Lai',
+      description: 'Tổng hợp báo cáo tăng/giảm Thủ tục hành chính & TTHC Nội bộ tỉnh Gia Lai',
+      argsSchema: {
+        nhom: z.enum(['tat_ca', 'hanh_chinh', 'noi_bo']).optional().describe('Nhóm thủ tục cần báo cáo')
+      },
+      icons: MCP_SERVER_ICONS
+    },
+    ({ nhom }) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: `Hãy gọi tool bien_dong_gia_lai với nhom="${nhom || 'tat_ca'}" để tổng hợp số lượng tăng/giảm, biến động ròng theo từng nhóm (TTHC Hành chính vs TTHC Nội bộ Gia Lai), phân theo cấp tỉnh/xã và liệt kê các thủ tục thay đổi nổi bật.`
+          }
+        }
+      ]
+    })
+  );
+
+  server.registerPrompt(
+    'kiem_tra_dvctt_tthc',
+    {
+      title: 'Kiểm tra mức độ DVCTT của TTHC',
+      description: 'Kiểm tra trạng thái cung cấp dịch vụ công trực tuyến (Toàn trình / Một phần / Chưa cung cấp) và cổng nộp hồ sơ',
+      argsSchema: {
+        ma_tthc: z.string().describe('Mã TTHC cần kiểm tra DVCTT')
+      },
+      icons: MCP_SERVER_ICONS
+    },
+    ({ ma_tthc }) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: `Hãy tra cứu mã TTHC "${ma_tthc}" bằng tool tra_cuu_theo_ma_tthc (kèm tra_cuu_dvctt: true) để đối chiếu mức độ DVCTT từ online_service.json, trường isFullProcess và hệ thống giải quyết trực tuyến.`
+          }
+        }
+      ]
+    })
   );
 
   return server;
@@ -1178,6 +1531,64 @@ export function isJsonRpcNotificationOrResponse(message: unknown): boolean {
  * Execute a JSON-RPC message directly through the MCP Server using InMemoryTransport
  */
 export async function executeJsonRpcMessage(message: unknown): Promise<unknown> {
+  if (message && typeof message === 'object') {
+    const reqMsg = message as {
+      id?: unknown;
+      method?: string;
+      params?: { name?: string; _meta?: Record<string, unknown> };
+    };
+
+    // MCP 2026-07-28: Kiểm tra protocolVersion trong _meta (nếu client gửi lên)
+    const metaVersion = reqMsg.params?._meta?.['io.modelcontextprotocol/protocolVersion'];
+    if (
+      typeof metaVersion === 'string' &&
+      !(SUPPORTED_MCP_PROTOCOL_VERSIONS as readonly string[]).includes(metaVersion)
+    ) {
+      return {
+        jsonrpc: '2.0',
+        id: reqMsg.id ?? null,
+        error: {
+          code: -32022,
+          message: `Unsupported protocol version: ${metaVersion}`,
+          data: {
+            requested: metaVersion,
+            supported: [...SUPPORTED_MCP_PROTOCOL_VERSIONS]
+          }
+        }
+      };
+    }
+
+    // MCP 2026-07-28 (SEP-2575): Xử lý RPC server/discover trực tiếp không cần handshake
+    if (reqMsg.method === 'server/discover') {
+      return {
+        jsonrpc: '2.0',
+        id: reqMsg.id ?? null,
+        result: {
+          resultType: 'complete',
+          protocolVersions: [...SUPPORTED_MCP_PROTOCOL_VERSIONS],
+          serverInfo: {
+            name: APP_NAME,
+            title: APP_TITLE,
+            version: APP_VERSION,
+            icons: MCP_SERVER_ICONS
+          },
+          capabilities: {
+            tools: {},
+            resources: {},
+            prompts: {}
+          },
+          _meta: {
+            'io.modelcontextprotocol/serverInfo': {
+              name: APP_NAME,
+              title: APP_TITLE,
+              version: APP_VERSION
+            }
+          }
+        }
+      };
+    }
+  }
+
   // Chuẩn hóa tên tool nếu client gọi alias (đảm bảo không bao giờ bị lỗi Tool not found)
   if (message && typeof message === 'object') {
     const msg = message as { method?: string; params?: { name?: string } };
@@ -1304,6 +1715,26 @@ export async function executeJsonRpcMessage(message: unknown): Promise<unknown> 
             }
           }
         }
+      }
+
+      // Chuẩn hóa phản hồi theo chuẩn MCP 2026-07-28 (resultType: 'complete' & _meta serverInfo)
+      if (res?.result && typeof res.result === 'object') {
+        const resultObj = res.result as Record<string, unknown>;
+        if (!resultObj.resultType) {
+          resultObj.resultType = 'complete';
+        }
+        const existingMeta =
+          resultObj._meta && typeof resultObj._meta === 'object'
+            ? (resultObj._meta as Record<string, unknown>)
+            : {};
+        resultObj._meta = {
+          ...existingMeta,
+          'io.modelcontextprotocol/serverInfo': {
+            name: APP_NAME,
+            title: APP_TITLE,
+            version: APP_VERSION
+          }
+        };
       }
 
       resolve(responseMsg);

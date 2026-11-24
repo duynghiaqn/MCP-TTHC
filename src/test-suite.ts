@@ -1010,7 +1010,131 @@ async function runTests() {
   console.assert(infoText.includes('online_service.json'), 'thong_tin_mcp_server phải hiển thị thống kê DVCTT từ online_service.json');
   console.log('[PASS] Tích hợp online_service.json & isFullProcess hoạt động chính xác!\n');
 
-  console.log('[SUCCESS] TẤT CẢ 37 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
+  // TEST 38: Kiểm tra chuẩn MCP mới nhất (2026-07-28 & SDK v2)
+  console.log('--- TEST 38: Kiểm tra chuẩn MCP 2026-07-28 (server/discover, resultType, Resources, Prompts, structuredContent) ---');
+  const discoverRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 381, method: 'server/discover' })
+    }),
+    {} as any
+  );
+  console.assert(discoverRes.status === 200, 'server/discover phải trả về 200');
+  console.assert(
+    discoverRes.headers.get('MCP-Protocol-Version') === '2026-07-28',
+    'Header MCP-Protocol-Version phải là 2026-07-28'
+  );
+  const discoverJson = (await discoverRes.json()) as any;
+  console.assert(discoverJson.result?.resultType === 'complete', 'server/discover phải có resultType=complete');
+  console.assert(
+    Array.isArray(discoverJson.result?.protocolVersions) &&
+      discoverJson.result.protocolVersions.includes('2026-07-28'),
+    'protocolVersions phải chứa 2026-07-28'
+  );
+  console.assert(
+    Array.isArray(discoverJson.result?.serverInfo?.icons) && discoverJson.result.serverInfo.icons.length > 0,
+    'serverInfo phải có icons chuẩn 2026-07-28'
+  );
+
+  // UnsupportedProtocolVersion (-32022)
+  const badVerRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 382,
+        method: 'tools/list',
+        params: { _meta: { 'io.modelcontextprotocol/protocolVersion': '1999-01-01' } }
+      })
+    }),
+    {} as any
+  );
+  const badVerJson = (await badVerRes.json()) as any;
+  console.assert(badVerJson.error?.code === -32022, `Phải trả lỗi -32022 UnsupportedProtocolVersion, nhận: ${badVerJson.error?.code}`);
+
+  // Resources list & read
+  const resListRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 383, method: 'resources/list' })
+    }),
+    {} as any
+  );
+  const resListJson = (await resListRes.json()) as any;
+  console.assert(resListJson.result?.resultType === 'complete', 'resources/list phải có resultType=complete');
+  console.assert((resListJson.result?.resources || []).length >= 3, 'Phải có tối thiểu 3 MCP Resources');
+
+  const resReadRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 384, method: 'resources/read', params: { uri: 'tthc://stats' } })
+    }),
+    {} as any
+  );
+  const resReadJson = (await resReadRes.json()) as any;
+  console.assert(
+    resReadJson.result?.contents?.[0]?.uri === 'tthc://stats',
+    'resources/read tthc://stats phải trả về nội dung hợp lệ'
+  );
+
+  // Prompts list & get
+  const promptsListRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 385, method: 'prompts/list' })
+    }),
+    {} as any
+  );
+  const promptsListJson = (await promptsListRes.json()) as any;
+  console.assert((promptsListJson.result?.prompts || []).length >= 3, 'Phải có tối thiểu 3 MCP Prompts');
+
+  const promptGetRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 386,
+        method: 'prompts/get',
+        params: { name: 'huong_dan_ho_so_tthc', arguments: { ma_hoac_ten_tthc: '6.006781' } }
+      })
+    }),
+    {} as any
+  );
+  const promptGetJson = (await promptGetRes.json()) as any;
+  console.assert(
+    (promptGetJson.result?.messages?.[0]?.content?.text || '').includes('6.006781'),
+    'prompts/get phải sinh prompt chứa mã TTHC'
+  );
+
+  // structuredContent on tools/call
+  const structCallRes = await netlifyHandler(
+    new Request('http://localhost:3000/mcp?api-key=secret_test_key_123', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 387,
+        method: 'tools/call',
+        params: { name: 'search', arguments: { query: 'kết hôn' } }
+      })
+    }),
+    {} as any
+  );
+  const structCallJson = (await structCallRes.json()) as any;
+  console.assert(
+    structCallJson.result?.resultType === 'complete' &&
+      Array.isArray(structCallJson.result?.structuredContent?.results),
+    'tools/call search phải trả resultType=complete và structuredContent.results'
+  );
+  console.log('[PASS] Chuẩn MCP 2026-07-28 & SDK v2 hoạt động chính xác 100%!\n');
+
+  console.log('[SUCCESS] TẤT CẢ 38 TEST ĐÃ HOÀN THÀNH XUẤT SẮC 100%!');
 }
 
 runTests().catch(err => {

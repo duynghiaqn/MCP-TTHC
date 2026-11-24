@@ -41,8 +41,9 @@ function getCorsHeaders(): Record<string, string> {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type, Authorization, x-api-key, api-key, X-API-Key, x-auth-token, mcp-session-id, Accept, Last-Event-ID',
-    'Access-Control-Expose-Headers': 'Content-Type, Authorization, mcp-session-id'
+      'Content-Type, Authorization, x-api-key, api-key, X-API-Key, x-auth-token, mcp-session-id, MCP-Protocol-Version, Accept, Last-Event-ID',
+    'Access-Control-Expose-Headers': 'Content-Type, Authorization, mcp-session-id, MCP-Protocol-Version',
+    'MCP-Protocol-Version': MCP_PROTOCOL_VERSION
   };
 }
 
@@ -496,6 +497,16 @@ export default async (req: Request, _context: Context): Promise<Response> => {
         }
 
         try {
+          if (Array.isArray(body)) {
+            const batchResults = (
+              await Promise.all(body.map(item => executeJsonRpcMessage(item)))
+            ).filter(r => r !== null);
+            if (batchResults.length === 0) {
+              return new Response(null, { status: 204, headers: getCorsHeaders() });
+            }
+            return jsonResponse(batchResults, 200);
+          }
+
           const response = await executeJsonRpcMessage(body);
 
           // Nếu có active SSE session writer (chuẩn SSE transport), push qua stream
